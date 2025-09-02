@@ -163,7 +163,7 @@ QIV1_V2.num = QIV1_all.num[, endsWith(colnames(QIV1_all.num), "V2")]
 # DEG analysis for overall effect HR vs LR----
 # ====================================================================
 #design matrix for comparing HR vs LR overall
-design1 <- model.matrix(~0 + Status + Visit + SEX + AGE + Library_Batch, data = QIV1_meta_filt)
+design1 <- model.matrix(~0 + Status + Visit + SEX + AGE, data = QIV1_meta_filt)
 contrast1 <- makeContrasts(HRvsLR = StatusHR-StatusLR, levels = design1)
 contrast1 <- makeContrasts(HRvsNR = StatusHR-StatusNR, levels = design1)
 
@@ -216,6 +216,8 @@ overallresults = list(HRvsLR=HRvsLR,HRvsLR_V1=HRvsLR_V1,HRvsLR_V2=HRvsLR_V2,HR_V
 #=============================================================================
 # DEG analysis strain wise (for each of the 4 strains in the vaccine)----
 #=============================================================================
+#remove batch effect using Combat-seq
+QIV1_adjusted <- ComBat_seq(QIV1_all.num, batch=QIV1_meta_filt$Library_Batch, group=NULL)
 
 
 strains <- c("HongKong", "Victoria", "Phuket", "Washington")
@@ -232,10 +234,8 @@ for (strain in strains) {
   #=====================================
   #Responder vs NonResponder both visits
   #=====================================
-  #remove batch effect using Combat-seq
-  QIV1_adjusted <- ComBat_seq(QIV1_all.num, batch=QIV1_meta_filt$Library_Batch, group=NULL)
-  
-  design1 <- model.matrix(~0 + QIV1_meta_filt[[response_col]] + SEX + AGE + Library_Batch + Visit, data = QIV1_meta_filt)
+
+  design1 <- model.matrix(~0 + QIV1_meta_filt[[response_col]] + SEX + AGE + Visit, data = QIV1_meta_filt)
   colnames(design1)[1:2] <- c("NonResponder", "Responder")
 
   contrast1 <- makeContrasts(ResponderVsNonResponder = Responder - NonResponder,levels = design1)
@@ -256,7 +256,7 @@ for (strain in strains) {
   #===========================================
   #V2 vs V1 in Res & NonRes and Res separately
   #============================================
-  design2 <- model.matrix(~0 + QIV1_meta_filt[[interaction_col]] + SEX + AGE + Library_Batch, data = QIV1_meta_filt)
+  design2 <- model.matrix(~0 + QIV1_meta_filt[[interaction_col]] + SEX + AGE, data = QIV1_meta_filt)
   colnames(design2)[1:4] = c("NonResponder.V1", "Responder.V1", "NonResponder.V2","Responder.V2")
 
   contrast2 <- makeContrasts(
