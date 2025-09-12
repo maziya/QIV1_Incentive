@@ -49,7 +49,7 @@ for (strain in names(cor_results)) {
 
 all_sig_genes = unique(unlist(lapply(sig_cor_results, function(x) x$gene)))
 
-#rho_mat is a df with all genes that are sig based on pval 
+#rho_mat is a df with all genes that are significant based on pval 
 # and their correlation coeff with each strain
 rho_mat= matrix(NA, nrow = length(all_sig_genes), ncol = length(sig_cor_results))
 rownames(rho_mat) =all_sig_genes

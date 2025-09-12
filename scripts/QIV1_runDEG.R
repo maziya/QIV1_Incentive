@@ -144,7 +144,7 @@ identical(QIV1_meta_filt$SubjectIDNew,colnames(QIV1_all.num))
 QIV1_all.num = QIV1_all.num[,QIV1_meta_filt$SubjectIDNew]                                              
 
 #make factors for status and visit
-QIV1_meta_filt$Status = factor(QIV1_meta_filt$Status, levels = c("HR","LR", "NR"))
+QIV1_meta_filt$Status = factor(QIV1_meta_filt$Status, levels = c("HR","MR", "LR"))
 QIV1_meta_filt$Visit = factor(QIV1_meta_filt$Visit, levels = c("V1", "V2"))
 QIV1_meta_filt$Status_Visit <- paste0(QIV1_meta_filt$Status, "_", QIV1_meta_filt$Visit)
 
@@ -186,7 +186,7 @@ HRvsLR = topTable(fit_ebayes,coef = 1,number = Inf)
 #design matrix for comparing between timepoints & status 
 #==========================================================
 
-design2 <- model.matrix(~0 + Status_Visit + SEX + AGE + Library_Batch, data = QIV1_meta_filt)
+design2 <- model.matrix(~0 + Status_Visit + SEX + AGE, data = QIV1_meta_filt)
 contrast2 <- makeContrasts(HRvsLR_V1 = Status_VisitHR_V1 - Status_VisitLR_V1,
   HRvsLR_V2 = Status_VisitHR_V2 - Status_VisitLR_V2,
   HR_V2vsV1 = Status_VisitHR_V2 - Status_VisitHR_V1,

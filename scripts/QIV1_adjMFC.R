@@ -13,7 +13,8 @@ compute_VT <- function(df) {
   rownames(df_std) = rownames(df)
   mat = as.matrix(df_std)
   
-  #max value for each subject
+  #max value for each subject this is taken because it is assumed that the transcriptomics
+  #signature will be dominated by the strain which has the greatest response
   VT_max = apply(mat, 1, max)
   
   #strains with max value
@@ -50,10 +51,8 @@ INT <- function(x) {
   qnorm((ranks - 0.5) / n)
 }
 
-TR_INT <- data.frame(
-  VT_INT = INT(TR$VT_max),
-  row.names = rownames(TR)
-)
+TR_INT <- data.frame(VT_INT = INT(TR$VT_max),
+  row.names = rownames(TR))
 
 plotdf = cbind(TV,TR_INT)
 
@@ -97,8 +96,7 @@ TR$responder_group = cut(
   TR$VT_decor,
   breaks = c(-Inf, q20, q80, Inf),
   labels = c("LR", "MR", "HR"),
-  include.lowest = TRUE
-)
+  include.lowest = TRUE)
 
 
 #validation of decorrelation 

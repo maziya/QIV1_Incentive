@@ -57,7 +57,7 @@ run_GSEA_BTM <- function(deg_csv_path,
 #   output_csv_path = paste0("FGSEA",basename(deg_csv_path),".csv"))
 
 deg_files <- list.files(
-  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/FGSEA_spearman_correlation_genes",
+  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/QIV1_adjMFC_combatseq_HRvsLR",
   pattern = "\\.csv$",
   full.names = TRUE
 )

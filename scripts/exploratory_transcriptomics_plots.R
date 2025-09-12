@@ -244,7 +244,8 @@ log2.cpm.top50 = log2.cpm.norm[top50_genes, ]
 
 ##################################################################
 ##################################################################
-DGEList <- DGEList(QIV1_V2.num)
+library(stringr)
+DGEList <- DGEList(QIV1_adjusted)
 DGEList.norm <- calcNormFactors(DGEList, method = "TMM")
 log2.cpm.norm <- cpm(DGEList.norm, log=TRUE)
 
@@ -272,18 +273,18 @@ pca_long <- pca.res.df %>%
          Library_Batch = factor(Library_Batch))
 library(ggrepel)
 
-pca.plot = ggplot(pca_long, aes(x = PC1, y = PC2, color = ResponderStatus)) +
+pca.plot = ggplot(pca_long, aes(x = PC1, y = PC2, color = Library_Batch)) +
   geom_point(size = 2) +
-  stat_ellipse(aes(group = ResponderStatus), type = "norm") +
-  facet_wrap(~ Strain) +
+  stat_ellipse(aes(group = Library_Batch), type = "norm") +
+  # facet_wrap(~ Strain) +
   xlab(paste0("PC1 (", pc.per[1], "%)")) +
   ylab(paste0("PC2 (", pc.per[2], "%)")) +
-  labs(title = "PCA: V2 Colored by ResponderStatus",
+  labs(title = "PCA: after CombatSeq",
        subtitle = "All genes log2 CPM, TMM normalized") +
   coord_fixed() +
   theme_bw()
 
-ggsave("genesPCA_V2_ResponderStatus.png", plot = pca.plot, width = 16, height = 10)
+ggsave("genesPCA_CombatSeq_batch.png", plot = pca.plot, width = 16, height = 10)
 
 pca_df = pca_long %>%
   mutate(IsOutlier = ifelse(abs(PC1) > 200 | abs(PC2) > 100, TRUE, FALSE))
