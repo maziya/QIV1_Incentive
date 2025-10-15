@@ -72,7 +72,8 @@ for (strain in names(sig_cor_results)) {
   matching_rho = df$spearman_rho[match(genes_present, df$gene)]
   rho_mat[genes_present, strain] = matching_rho
 }
-
+#only positively correlated genes 
+rho_mat_positive <- rho_mat[apply(rho_mat[,1:4], 1, function(x) all(x[!is.na(x)] > 0)), ]
 
 library(pheatmap)
 png("correlation_adjFC_geneexpr_heatmap.png", width = 1000, height = 800)

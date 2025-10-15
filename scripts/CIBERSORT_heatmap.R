@@ -25,3 +25,62 @@ propheatmap = pheatmap(t(heat_mat),annotation_col= annotation_col,
               fontsize_row = 5,legend = TRUE,fontsize_legend = 5,
               show_colnames = FALSE)
 dev.off()
+
+
+
+QIV1_bulkcountsCIBERSORT_estimates = read_csv("QIV1_bulkcountsCIBERSORT_estimates.csv")
+QIV1_bulkcountsCIBERSORT_estimates= QIV1_bulkcountsCIBERSORT_estimates[,c(1,2,5,6,7,12,14,23)]
+cibersort_respon = QIV1_bulkcountsCIBERSORT_estimates %>%
+inner_join(respondergroups_adjFC, by = "SubjectID")
+cibersort_respon$Visit = gsub(".*(V[0-9]+)$", "\\1", QIV1_bulkcountsCIBERSORT_estimates$Mixture)
+
+cibersort_long <- cibersort_respon %>%
+  pivot_longer(
+    cols = `B cells naive`:`Neutrophils`,
+    names_to = "CellType",
+    values_to = "Proportion"
+  )
+
+cibersort_plotdata <- cibersort_long %>%
+  pivot_longer(
+    cols = HongKong:Washington,
+    names_to = "Strain",
+    values_to = "Responder"
+  ) %>%
+  filter(Responder %in% c("HR", "LR"))
+
+cibersort_plotdata <- cibersort_plotdata %>%
+  mutate(Cell_Visit = paste(CellType, Visit, sep = "_"))
+
+cibersort_plotdata <- cibersort_plotdata %>%
+  mutate(ResVisit = paste(Responder, Visit, sep = "_"))
+
+fill_colors <- c(
+  "HR_V1" = "#6a0dad",  # dark purple
+  "HR_V2" = "#b19cd9",  # light purple
+  "LR_V1" = "#8b4513",  # dark brown
+  "LR_V2" = "#cd853f"   # light brown
+)
+
+library(ggpubr)
+plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = ResVisit)) +
+  geom_boxplot(aes(group = interaction(CellType, ResVisit)),
+               position = position_dodge(width = 0.8),
+               width = 0.6,size=0.2,
+               alpha = 0.8) +
+  facet_wrap(~ Strain, scales = "free_y") +
+  stat_compare_means(aes(group = Responder),       
+    method = "wilcox.test",   
+    label = "p.signif",       
+    hide.ns = TRUE) +
+  theme_classic(base_size = 12) +
+  theme(strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Cell Type",
+    y = "Cell Proportion",
+    fill = "Responder_Visit",
+    title = "CIBERSORT Cell Proportions by Visit and Responder Group") +
+  scale_fill_manual(values = fill_colors)
+
+ggsave(filename = "CIBERSORT_cell_proportionsplot.png", plot = plot, width = 12, height = 6, dpi = 300)
+

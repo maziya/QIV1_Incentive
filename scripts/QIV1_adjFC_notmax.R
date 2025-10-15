@@ -1,6 +1,6 @@
 #===============================================================================
-# Modified from John Tsang et al. 2014
-# Compute responder groups per viral strain (not max across strains)
+#Modified from John Tsang et al. 2014
+#Compute responder groups per viral strain (not max across strains)
 #===============================================================================
 
 #Standardization with median/MAD
@@ -50,32 +50,30 @@ TR_INT = InvNorm(TR)
 TR_INT = as.matrix(TR_INT)
 #TR is now TR_INT
 #===============================================================================
-#Decorrelate each strain separately Bin subjects by baseline titre per strain
+#De-correlate each strain separately bin subjects by baseline titre per strain
 #then standardize foldchange within each bin
 #===============================================================================
-colnames(TR_INT) = c("HongKong","Victoria", "Phuket","Washington")
-colnames(TV) = c("HongKong","Victoria", "Phuket","Washington")
+colnames(TR_INT) = c("HongKong","Victoria","Phuket","Washington")
+colnames(TV) = c("HongKong","Victoria","Phuket","Washington")
  
 TR_decor = TR_INT
 for (strain in colnames(TR_INT)) {
   #compute quantile breaks
-  qs <- quantile(TV[, strain], probs = seq(0, 1, 0.25), na.rm = TRUE)
-  bins <- cut(TV[, strain], breaks = qs, include.lowest = TRUE, labels = FALSE)
+  qs = quantile(TV[, strain], probs = seq(0, 1, 0.25), na.rm = TRUE)
+  bins = cut(TV[, strain], breaks = qs, include.lowest = TRUE, labels = FALSE)
   
   #initialize column in TR_decor
   TR_decor[, strain] <- NA
   
   for (b in unique(bins)) {
-    idx <- which(bins == b)
-    # assign directly to the data frame using row indices
-    TR_decor[idx, strain] <- standardize_titre(TR_INT[idx, strain])
+    idx = which(bins == b)
+    TR_decor[idx, strain] = standardize_titre(TR_INT[idx, strain])
   }
 }
 
-
-#==================================
-#Assign responder groups per strain
-#===================================
+#====================================================
+#Assign responder groups per strain based on quantile
+#====================================================
 ResponderGroups = as.data.frame(matrix(nrow = nrow(TR_decor), ncol = ncol(TR_decor)))
 rownames(ResponderGroups) <- rownames(TR_decor)
 colnames(ResponderGroups) <- colnames(TR_decor)
