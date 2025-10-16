@@ -58,6 +58,7 @@ colnames(TV) = c("HongKong","Victoria","Phuket","Washington")
  
 TR_decor = TR_INT
 for (strain in colnames(TR_INT)) {
+  
   #compute quantile breaks
   qs = quantile(TV[, strain], probs = seq(0, 1, 0.25), na.rm = TRUE)
   bins = cut(TV[, strain], breaks = qs, include.lowest = TRUE, labels = FALSE)
@@ -91,3 +92,39 @@ for (strain in colnames(TR_decor)) {
     include.lowest = TRUE
   )
 }
+
+
+### Plot the adjFC vs standardized baseline to check if decorrelation works
+###
+
+TV_df =as.data.frame(TV) %>% 
+  mutate(SubjectID = rownames(TV))
+TR_df = as.data.frame(TR_decor) %>% 
+  mutate(SubjectID = rownames(TR_decor))
+
+TV_long = TV_df %>%
+  pivot_longer(cols = -SubjectID,
+    names_to = "Strain",
+    values_to = "TV")
+
+TR_long = TR_df %>%
+  pivot_longer(cols = -SubjectID,
+    names_to = "Strain",
+    values_to = "TR_decor")
+
+plot_df = left_join(TV_long, TR_long, by = c("SubjectID", "Strain"))
+
+p = ggplot(plot_df, aes(x = TV, y = TR_decor)) +
+  geom_jitter(size = 0.5, width = 0.04, height = 0.04, color = "steelblue") +
+  geom_smooth(method = "lm", color = "black", fill = "grey50", alpha = 0.05) + 
+  stat_cor(method = "spearman",label.x.npc = "left", label.y.npc = "top", size = 3)+
+  facet_wrap(~Strain, scales = "free") + 
+  labs(title = "Decorrelated HAI Response vs Baseline (Per Strain)",
+    x = "Standardized Baseline titre",
+    y = "adjFC") +
+  theme_classic(base_size = 12) +
+  theme(strip.text = element_text(size = 10), 
+        panel.background = element_rect(fill = "white"),  
+        axis.text.x = element_text(hjust = 1, size = 10)) 
+
+ggsave("Decorrelated_FoldChange_vs_Baseline.png", plot = p, width = 10, height = 6, dpi = 300)
