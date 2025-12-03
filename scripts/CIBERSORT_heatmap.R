@@ -30,9 +30,12 @@ dev.off()
 
 QIV1_bulkcountsCIBERSORT_estimates = read_csv("QIV1_bulkcountsCIBERSORT_estimates.csv")
 QIV1_bulkcountsCIBERSORT_estimates= QIV1_bulkcountsCIBERSORT_estimates[,c(1,2,5,6,7,12,14,23)]
+colnames(QIV1_bulkcountsCIBERSORT_estimates)[1] = "SubjectID"
+QIV1_bulkcountsCIBERSORT_estimates$Visit = gsub(".*(V[0-9]+)$", "\\1", QIV1_bulkcountsCIBERSORT_estimates$SubjectID)
+QIV1_bulkcountsCIBERSORT_estimates$SubjectID <-
+  sub("(V[0-9]+)$", "", QIV1_bulkcountsCIBERSORT_estimates$SubjectID)
 cibersort_respon = QIV1_bulkcountsCIBERSORT_estimates %>%
-inner_join(respondergroups_adjFC, by = "SubjectID")
-cibersort_respon$Visit = gsub(".*(V[0-9]+)$", "\\1", QIV1_bulkcountsCIBERSORT_estimates$Mixture)
+  inner_join(respondergroups_adjFC, by = "SubjectID")
 
 cibersort_long <- cibersort_respon %>%
   pivot_longer(
@@ -62,16 +65,24 @@ fill_colors <- c(
   "LR_V2" = "#cd853f"   # light brown
 )
 
+fill_colors <- c(
+  "V1" = "#6a0dad",  # dark purple
+  "V2" = "#8b4513"  # dark brown
+)
+
 library(ggpubr)
+comp_list <- combn(unique(cibersort_plotdata$ResVisit), 2, simplify = FALSE)
+
 plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = ResVisit)) +
   geom_boxplot(aes(group = interaction(CellType, ResVisit)),
                position = position_dodge(width = 0.8),
                width = 0.6,size=0.2,
                alpha = 0.8) +
   facet_wrap(~ Strain, scales = "free_y") +
-  stat_compare_means(aes(group = Responder),       
+  stat_compare_means(aes(group = ResVisit),       
     method = "wilcox.test",   
-    label = "p.signif",       
+    label = "p.signif",
+    comparisons = comp_list,
     hide.ns = TRUE) +
   theme_classic(base_size = 12) +
   theme(strip.text = element_text(face = "bold"),
@@ -82,5 +93,29 @@ plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = ResVi
     title = "CIBERSORT Cell Proportions by Visit and Responder Group") +
   scale_fill_manual(values = fill_colors)
 
-ggsave(filename = "CIBERSORT_cell_proportionsplot.png", plot = plot, width = 12, height = 6, dpi = 300)
+ggsave(filename = "CIBERSORT_cell_proportionsplot1.png", plot = plot, width = 12, height = 6, dpi = 300)
+
+comparisons = list(c("V1", "V2"))
+
+plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = Visit)) +
+  geom_boxplot(aes(group = interaction(CellType, Visit)),
+               position = position_dodge(width = 0.8),
+               width = 0.6,size=0.2,
+               alpha = 0.8) +
+  facet_wrap(~ Strain, scales = "free_y") +
+  stat_compare_means(aes(group = Visit),       
+                     method = "wilcox.test",  
+                     comparisons = comparisons,
+                     label = "p.signif",       
+                     hide.ns = TRUE) +
+  theme_classic(base_size = 12) +
+  theme(strip.text = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Cell Type",
+       y = "Cell Proportion",
+       fill = "Visit",
+       title = "CIBERSORT Cell Proportions by Visit") +
+  scale_fill_manual(values = fill_colors)
+
+ggsave(filename = "CIBERSORT_cell_proportionsplot_visit.png", plot = plot, width = 12, height = 6, dpi = 300)
 
