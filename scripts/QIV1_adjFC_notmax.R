@@ -128,3 +128,32 @@ p = ggplot(plot_df, aes(x = TV, y = TR_decor)) +
         axis.text.x = element_text(hjust = 1, size = 10)) 
 
 ggsave("Decorrelated_FoldChange_vs_Baseline.png", plot = p, width = 10, height = 6, dpi = 300)
+
+# Histogram for the adjFC bins to check if top 20 and lower 20 quantiles are
+# good to define HR and LR
+
+qs_long = TR_long %>%
+  group_by(Strain) %>%
+  summarise(
+    `20th Quantile` = quantile(TR_decor, 0.2, na.rm = TRUE),
+    `80th Quantile` = quantile(TR_decor, 0.8, na.rm = TRUE),
+    `50th Quantile` = quantile(TR_decor, 0.5, na.rm = TRUE),
+  ) %>%
+  pivot_longer(-Strain, names_to = "Quantile", values_to = "q_value")
+
+
+p = ggplot(TR_long, aes(x = TR_decor)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+  geom_vline(data = qs_long,
+             aes(xintercept = q_value, color = Quantile, linetype = Quantile),
+             size = 1) +
+  facet_wrap(~Strain, scales = "fixed") +
+  theme_classic(base_size = 12) +
+  labs(x = "adjFC", y = "Count", color = "Quantiles", linetype = "Quantiles") +
+  scale_color_manual(values = c("20th Quantile" = "blue",
+                                "80th Quantile"  = "orange",
+                                "50th Quantile"  = "purple")) +
+  scale_linetype_manual(values = c("20th Quantile" = "dashed",
+                                   "80th Quantile" = "dashed",
+                                   "50th Quantile" = "dotted"))
+ggsave("Histogram_adjFC_bins.png", p, width = 10, height = 8, dpi = 300)
