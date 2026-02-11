@@ -6,7 +6,72 @@ QIV1_V2 <- QIV1_adjusted[, endsWith(colnames(QIV1_adjusted), "V2")]
 DGEList <- DGEList(QIV1_V1)
 DGEList.norm <- calcNormFactors(DGEList, method = "TMM")
 cpm.norm.log <- edgeR::cpm(DGEList.norm, log = TRUE)
+QIV1_V1.df = as.data.frame(cpm.norm.log)
+QIV1_V1.df = rownames_to_column(QIV1_V1.df, var="target_id")
+QIV1_V1.df = left_join(QIV1_V1.df,protein_coding, by ="target_id")
+QIV1_V1.df = column_to_rownames(QIV1_V1.df, var="HGNC_symbol")
+QIV1_V1.df = QIV1_V1.df[,-c(1)]
 
+#extract gene exp for all signatures
+baseline_signatures_various <- read_csv("baseline_signatures_various.csv")
+
+QIV1_V1_immune = as.list()
+QIV1_V1_immune = lapply(colnames(baseline_signatures_various), function(sig) {
+  
+  genes = baseline_signatures_various[[sig]]
+  genes = genes[genes %in% rownames(QIV1_V1.df)]
+  QIV1_V1.df[genes, , drop = FALSE]
+})
+
+names(QIV1_V1_immune) <- colnames(baseline_signatures_various)
+QIV1_sig_mean_list <- lapply(names(QIV1_V1_immune), function(sig) {
+  
+  mat = QIV1_V1_immune[[sig]]
+  mat_scaled <- t(scale(t(mat)))
+  
+  data.frame(
+    SubjectIDNew = colnames(mat_scaled),
+    mean_expression = colMeans(mat_scaled),
+    Signature = sig
+  )
+})
+
+QIV1_sig_mean = bind_rows(QIV1_sig_mean_list)
+
+QIV1_sig_mean <- left_join(
+  QIV1_sig_mean,
+  QIV1_meta_filt_cond,
+  by = "SubjectIDNew"
+)
+comparisons <- list(
+  c("LR","MR"),
+  c("MR","HR"),
+  c("LR","HR")
+)
+
+library(ggpubr)
+sig_mean_box <- ggplot(QIV1_sig_mean,
+                         aes(x = ResponderGroup, y = mean_expression, fill = ResponderGroup)) +
+  geom_boxplot(width = 0.6, alpha = 0.8, outlier.shape = NA) +
+  geom_jitter(width = 0.1, size = 1, alpha = 0.8, color = "black") +
+  theme_classic(base_size = 16) + facet_wrap(~ Signature) +
+  theme(
+    strip.text = element_text(size = 18, face = "bold"),
+    axis.text.x = element_text(size = 14)
+  ) +labs(title = "Baseline Signature Expression in QIV1 Day 0",
+          x = "Responder Status",
+          y = "Mean Z-scored gene expression")+
+  stat_compare_means(
+    comparisons = comparisons,
+    method = "wilcox.test",
+    label = "p.signif",
+    size = 5,
+    step.increase = 0.12
+  )
+ggsave("Baseline_signatures_QIV1_Day0.png",plot = sig_mean_box, dpi = 300, width =20, height = 15)
+
+
+##################################################################################
 immunegenes <- immunegenes_curatedlist %>%
   pivot_longer(cols = everything(), names_to = "column", values_to = "gene") %>%
   filter(!is.na(gene)) %>%
@@ -14,11 +79,7 @@ immunegenes <- immunegenes_curatedlist %>%
 protein_coding = read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data/protein_coding_ensemble_hgnclist.csv")
 
 immunegenes = as.data.frame(immunegenes)
-QIV1_V1.df = as.data.frame(cpm.norm.log)
-QIV1_V1.df = rownames_to_column(QIV1_V1.df, var="target_id")
-QIV1_V1.df = left_join(QIV1_V1.df,protein_coding, by ="target_id")
-QIV1_V1.df = column_to_rownames(QIV1_V1.df, var="HGNC_symbol")
-QIV1_V1.df = QIV1_V1.df[,-c(1)]
+
 
 genes_to_keep = immunegenes$gene[immunegenes$gene %in% rownames(QIV1_V1.df)]
 others = immunegenes$gene[!immunegenes$gene %in% rownames(QIV1_V1.df)]
@@ -89,7 +150,7 @@ responder_ha <- HeatmapAnnotation(
 
 library(circlize)
 heatmap_colors <- colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
-QIV1_V1_immune_scaled <- t(scale(t(QIV1_V1_immune)))
+QIV1_V1_immune_scaled <- t(scale(t(QIV1_V1.df)))
 
 immuneheatmap = Heatmap(
   QIV1_V1_immune_scaled,
@@ -285,22 +346,21 @@ QIV1_tgsig_plot <- QIV1_tgsig_long %>%
 QIV1_tgsig_mean <- QIV1_tgsig %>%
   mutate(gene = rownames(QIV1_tgsig)) %>%
   pivot_longer(
-    cols = colnames(QIV1_tgsig)[1:88],
+    cols = -gene,
     names_to = "SubjectIDNew",
     values_to = "expression"
   ) %>%
   group_by(SubjectIDNew) %>%
-  summarise(mean_expression = mean(expression, na.rm = TRUE)) 
-
-
-QIV1_tgsig_mean <- left_join(QIV1_tgsig_mean, QIV1_meta_filt_cond, 
-                             by = "SubjectIDNew") %>% 
+  summarise(mean_expression = mean(expression, na.rm = TRUE)) %>%
+  left_join(QIV1_meta_filt_cond, by = "SubjectIDNew") %>%
   select(SubjectIDNew,
          mean_expression,
          Responder_Victoria,
          Responder_HongKong,
          Responder_Phuket,
-         Responder_Washington) #add ResponderGroup if using adjMFC labels
+         Responder_Washington,
+         ResponderGroup)
+#add ResponderGroup if using adjMFC labels
 
 QIV1_tgsig_mean_facet <- QIV1_tgsig_mean %>%
   pivot_longer(
@@ -332,16 +392,16 @@ tgsig_box = ggplot(QIV1_tgsig_plot,
 ggsave("tgsig_exp_QIV1_day0_v2.png",plot = tgsig_box, dpi = 300, width =20, height = 15)
 
 #boxplot of mean expression of all genes
-tgsig_mean_box <- ggplot(QIV1_tgsig_mean_facet,
-aes(x = Response, y = mean_expression, fill = Response)) +
+tgsig_mean_box <- ggplot(QIV1_tgsig_mean,
+aes(x = ResponderGroup, y = mean_expression, fill = ResponderGroup)) +
   geom_boxplot(width = 0.6, alpha = 0.8, outlier.shape = NA) +
   geom_jitter(width = 0.1, size = 1, alpha = 0.8, color = "black") +
-  facet_wrap(~ Virus, ncol = 2) +
+  # facet_wrap(~ Virus, ncol = 2) +
   theme_classic(base_size = 16) +
   theme(
     strip.text = element_text(size = 18, face = "bold"),
     axis.text.x = element_text(size = 14)
-  ) +labs(title = "TGsig average expression in QIV1 Day0",
+  ) +labs(title = "QIV1 signature(from 19kgene list) average expression in QIV1 Day0",
           x = "Responder Status",
           y = "Average gene expression")+
   stat_compare_means(
@@ -351,5 +411,5 @@ aes(x = Response, y = mean_expression, fill = Response)) +
     size = 5,
     step.increase = 0.12
   )
-ggsave("tgsig_avgexp_scaled_QIV1_day0_v4.png",plot = tgsig_mean_box, dpi = 300, width =20, height = 15)
+ggsave("QIV1sig_baseline_bestpredictorlist_from19klist.png",plot = tgsig_mean_box, dpi = 300, width =20, height = 15)
 
