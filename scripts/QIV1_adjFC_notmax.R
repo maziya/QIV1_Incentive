@@ -83,12 +83,15 @@ for (strain in colnames(TR_decor)) {
   #compute 20th and 80th percentiles for the strain
   q20 = quantile(TR_decor[, strain], probs = 0.2, na.rm = TRUE)
   q80 = quantile(TR_decor[, strain], probs = 0.8, na.rm = TRUE)
+  # q50 = quantile(TR_decor[, strain], probs = 0.5, na.rm = TRUE)
   
   #assign responder group per strain
   ResponderGroups[, strain] = cut(
     TR_decor[, strain],
     breaks = c(-Inf, q20, q80, Inf),
     labels = c("LR", "MR", "HR"),
+    # breaks = c(-Inf, q50, Inf),
+    # labels = c("LR", "HR"),
     include.lowest = TRUE
   )
 }
