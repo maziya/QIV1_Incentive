@@ -55,7 +55,7 @@ TR_INT <- data.frame(VT_INT = INT(TR$VT_max),
   row.names = rownames(TR))
 
 plotdf = cbind(TV,TR_INT)
-
+#TR is now TR_INT
 #we plotted TVi(0) and TRi values against each other across subjects, and as expected, we
 #saw a strong inverse correlation between them
 
@@ -79,42 +79,48 @@ dev.off()
 TV$bin = cut(plotdf$VT_max,breaks = quantile(plotdf$VT_max, probs = seq(0, 1, 0.25), na.rm = TRUE),
              include.lowest = TRUE, labels = FALSE)
 
-TR$bin = TV$bin[match(rownames(TR), rownames(TV))]
-TR$VT_decor = NA
-for (i in unique(TR$bin)) {
-  idx = which(TR$bin == i)
-  TR_binned = TR$VT_max[idx]    
-  TR$VT_decor[idx] = standardize_titre(TR_binned)
+TR_INT$bin = TV$bin[match(rownames(TR_INT), rownames(TV))]
+TR_INT$VT_decor = NA
+for (i in unique(TR_INT$bin)) {
+  idx = which(TR_INT$bin == i)
+  TR_binned = TR_INT$VT_INT[idx]    
+  TR_INT$VT_decor[idx] = standardize_titre(TR_binned)
 }
 
 #calculate percentile
-q20 = quantile(TR$VT_decor, probs = 0.2, names = FALSE)
-q80 = quantile(TR$VT_decor, probs = 0.8, names = FALSE)
+# q20 = quantile(TR_INT$VT_decor, probs = 0.2, names = FALSE)
+# q80 = quantile(TR_INT$VT_decor, probs = 0.8, names = FALSE)
+q40 = quantile(TR_INT$VT_decor, probs = 0.4, names = FALSE)
+q60 = quantile(TR_INT$VT_decor, probs = 0.6, na.rm = TRUE)
+q50 = quantile(TR_INT$VT_decor, probs = 0.5, na.rm = TRUE)
 
 #categorize into low mid and high responders
-TR$responder_group = cut(
-  TR$VT_decor,
-  breaks = c(-Inf, q20, q80, Inf),
-  labels = c("LR", "MR", "HR"),
+TR_INT$responder_group = cut(
+  TR_INT$VT_decor,
+  # breaks = c(-Inf, q20, q80, Inf),
+  # breaks = c(-Inf, q40, q60, Inf),
+  # labels = c("LR", "MR", "HR"),
+  breaks = c(-Inf, q50, Inf),
+  labels = c("LR", "HR"),
   include.lowest = TRUE)
 
 
 #validation of decorrelation 
 
 #continuous
-cor_test1 = cor.test(TV$VT_max, TR$VT_decor, method = "spearman")
+cor_test1 = cor.test(TV$VT_max, TR_INT$VT_decor, method = "spearman")
 
 #Discretized considering low=1, mid=2, high=3
-group_num = as.numeric(TR$responder_group)
+group_num = as.numeric(TR_INT$responder_group)
 cor_test2 = cor.test(TV$VT_max, group_num, method = "spearman")
 
 virus_cols = colnames(QIV1_responder_BL)
 pvals = sapply(virus_cols, function(v) {
-  cor.test(QIV1_responder_BL[[v]], TR$VT_decor, method = "spearman")$p.value
+  cor.test(QIV1_responder_BL[[v]], TR_INT$VT_decor, method = "spearman")$p.value
 })
 
-kruskal_test = kruskal.test(TR$VT_decor ~ TR$VT_top_strain)
+kruskal_test = kruskal.test(TR_INT$VT_decor ~ TR_INT$VT_top_strain)
 
 responder_groups = data.frame(
-  SubjectID = rownames(TR),
-  ResponderGroup = TR$responder_group)
+  SubjectID = rownames(TR_INT),
+  ResponderGroup = TR_INT$responder_group)
