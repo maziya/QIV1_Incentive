@@ -252,7 +252,7 @@ log2.cpm.lm22 = log2.cpm.norm[rownames(LM22_ensemblid),]
 ##################################################################
 ##################################################################
 library(stringr)
-DGEList <- DGEList(QIV1_adjusted)
+DGEList <- DGEList(QIV1_all.num)
 DGEList.norm <- calcNormFactors(DGEList, method = "TMM")
 log2.cpm.norm <- cpm(DGEList.norm, log=TRUE)
 
@@ -289,12 +289,21 @@ pca.plot = ggplot(pca_long, aes(x = PC1, y = PC2, color = Library_Batch)) +
   # facet_wrap(~ Strain) +
   xlab(paste0("PC1 (", pc.per[1], "%)")) +
   ylab(paste0("PC2 (", pc.per[2], "%)")) +
-  labs(title = "PCA: after CombatSeq",
+  labs(title = "PCA: before CombatSeq",
        subtitle = "All genes log2 CPM, TMM normalized") +
-  coord_fixed() +
-  theme_bw()
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(size = 16 ),
+    axis.text.y = element_text(size = 16),
+    axis.title = element_text(size = 16),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 14)
+  )+
+  coord_fixed() 
 
-ggsave("genesPCA_afterCombatSeq_batch_redo2.png", plot = pca.plot, width = 16, height = 10)
+ggsave("genesPCA_beforeCombatSeq_batch_redo3.png", plot = pca.plot, width = 14, height = 10)
 
 pca_df = pca_long %>%
   mutate(IsOutlier = ifelse(abs(PC1) > 200 | abs(PC2) > 100, TRUE, FALSE))
@@ -375,15 +384,20 @@ for (pc_name in colnames(pca_scores)) {
   }
 }
 
+
 correlation_results <- bind_rows(results_list)
+correlation_results$PC_num <- as.numeric(gsub("PC", "", correlation_results$PC))
 correlation_results$PC <- factor(
   correlation_results$PC,
   levels = correlation_results$PC[order(correlation_results$PC_num)] |> unique()
 )
-correplation_covariate = ggplot(correlation_results, aes(x =PC, y = Variable, size = negLog10PVal)) +
-  geom_point(color = "darkgrey") + theme_minimal()+
-  labs(size = "-log10(pvalue)", x = "", y = "", title = "Correlation of covariate with PC component after combatseq")
-ggsave("pc_corr_covariate.png", plot = correplation_covariate, width = 12)
+correlation_covariate = ggplot(correlation_results, aes(x =PC, y = Variable, size = negLog10PVal)) +
+  geom_point(color = "steelblue") +
+  labs(size = "-log10(pvalue)", x = "", y = "", title = "Correlation of covariate with PC component after combatseq")+
+  theme_minimal() +
+  theme( axis.text.y = element_text(size = 14, face="bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"))
+ggsave("pc_corr_covariate_aftercombat.png", plot = correlation_covariate, width = 12)
 
 
 
@@ -396,6 +410,7 @@ screepc = ggplot(scree_df, aes(x = factor(PC, levels = PC),
                      y = VariancePercent)) +
   geom_bar(stat = "identity") +
   labs(x = "Principal Component",
-       y = "Variance Explained (%)") +
-  theme(axis.text.x = element_text(angle = 45))
-ggsave("pc_screeplot.png", plot = screepc, width = 10)
+       y = "Variance Explained (%)", title = "After CombatSeq correction") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"))
+ggsave("pc_screeplot_aftercombat.png", plot = screepc, width = 10)
+
