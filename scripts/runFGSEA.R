@@ -8,7 +8,7 @@ run_GSEA_BTM <- function(deg_csv_path,
                          gmt_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data/BTM_for_GSEA_20131008.gmt",
                          rank_column = "logFC",
                          gene_column = "HGNC_symbol",
-                         fdr_cutoff = 0.01,
+                         fdr_cutoff = 0.05,
                          minSize = 10,
                          maxSize = 500,
                          nperm = 10000) {
@@ -22,6 +22,10 @@ run_GSEA_BTM <- function(deg_csv_path,
   }
   
   #named vector for rankings
+  #if abs logFC is to be used
+  # deg_df$abs_rank_value <- abs(deg_df[[rank_column]])
+  # rankings <- setNames(deg_df$abs_rank_value, deg_df[[gene_column]])
+  
   rankings <- setNames(deg_df[[rank_column]], deg_df[[gene_column]])
   rankings <- sort(rankings, decreasing = TRUE)
   
@@ -29,7 +33,7 @@ run_GSEA_BTM <- function(deg_csv_path,
   gsea_res <- fgsea::fgsea(
     pathways = BTM,
     stats = rankings,
-    scoreType = "pos", #only positive enrichment
+    scoreType = "std", #change to pos for only positive enrichment 
     minSize = minSize,
     maxSize = maxSize,
     nproc = 1,
@@ -57,7 +61,7 @@ run_GSEA_BTM <- function(deg_csv_path,
 #   output_csv_path = paste0("FGSEA",basename(deg_csv_path),".csv"))
 
 deg_files <- list.files(
-  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/QIV1_adjMFC_combatseq_HRvsLR",
+  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/QIV1_adjFC_filterbyExpr_HRMRLR_DEGs/forgsea_btm_posneg",
   pattern = "\\.csv$",
   full.names = TRUE
 )
@@ -76,11 +80,11 @@ library(tidyr)
 library(stringr)
 library(tibble)
 
-FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/FGSEA_spearman_correlation_genes"
+FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/fgsea_HRLR_degs_v2"
 
 csv_files = list.files(FGSEA_results, pattern = "\\.csv$", full.names = TRUE)
 read_fgsea_nes = function(file_path) {
-  df = read.csv(file_path)
+  df = read.csv(file_path, check.names = FALSE, row.names = NULL)
   #if some fgsea results in no enriched pathways
   if (all(trimws(df$pathway) == "")) {
     return(NULL)
@@ -106,15 +110,103 @@ nes_matrix = column_to_rownames(nes_matrix, var = "pathway")
 nes_matrix = as.matrix(nes_matrix)
 nes_matrix[is.na(nes_matrix)] = 0
 
+
+nes_matrix <- nes_matrix[!grepl("^TBA", rownames(nes_matrix)), ]
 library(pheatmap)
-pdf("NES_heatmap.pdf", width = 30,height = 30)
+png("NES_heatmap_BTM_v2.png", width = 30,height = 30)
 pheatmap(nes_matrix,
          cluster_rows = TRUE,
          cluster_cols = TRUE,
          fontsize_col = 10, 
          cellwidth = 25,       
          cellheight = 10,
-         color = colorRampPalette(c("grey", "lightblue", "darkblue"))(100), 
-         main = "Normalized Enrichment Score with BTM GSEA",height =40,width=10,
-         legend = TRUE)
+         # color = colorRampPalette(c("white", "blue", "red"))(100), 
+         color = colorRampPalette(brewer.pal(n = 11, name = "RdBu"))(100),
+         main = "Normalized Enrichment Score with BTM pathways GSEA",
+         angle_col = "45",legend = TRUE)
+dev.off()
+
+heatmap_colors <- colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
+
+ht <- Heatmap(
+  nes_matrix,
+  name = "NES",
+  col = heatmap_colors,
+  
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  clustering_distance_rows = "pearson",
+  clustering_distance_columns = "pearson",
+  clustering_method_rows = "ward.D2",
+  clustering_method_columns = "ward.D2",
+  border = TRUE,
+  
+  show_row_names = TRUE,
+  show_column_names = TRUE,
+  
+  row_names_side = "left",      
+  row_dend_side = "right",      
+  row_names_max_width = unit(15, "cm"),
+  row_names_gp = gpar(fontsize = 14),
+  column_names_gp = gpar(fontsize = 14),
+  column_names_rot = 45,
+  
+  heatmap_legend_param = list(
+    title = "Normalized Enrichment Score",
+    title_gp = gpar(fontsize = 12),
+    labels_gp = gpar(fontsize = 12)
+  )
+)
+
+png("NES_heatmap_BTM_v3.png", width = 16, height = 18, units = "in", res = 300)
+draw(
+  ht,
+  heatmap_legend_side = "right",
+  padding = unit(c(5, 10, 5, 50), "mm")
+)
+dev.off()
+
+# create a fontsize vector — default 14 for all rows
+fontsizes <- rep(14, nrow(nes_matrix))
+fontcolors <- rep("black", nrow(nes_matrix))
+# set specific rows to bigger font by name
+big_rows <- c("antiviral IFN signature (M75)", "innate antiviral response (M150)",
+              "complement activation (I) (M112.0)", "enriched in NK cells (I) (M7.2)",
+              "T cell activation (I) (M7.1)","T cell differentiation (M14)",
+              "enriched in B cells (IV) (M47.3)", "enriched in monocytes (II) (M11.0)")  
+fontsizes[rownames(nes_matrix) %in% big_rows] <- 18
+fontcolors[rownames(nes_matrix) %in% big_rows] <- "blue"
+ht <- Heatmap(
+  nes_matrix,
+  name = "NES",
+  col = heatmap_colors,
+  
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  clustering_distance_rows = "pearson",
+  clustering_distance_columns = "pearson",
+  clustering_method_rows = "ward.D2",
+  clustering_method_columns = "ward.D2",
+  border = FALSE,
+  
+  show_row_names = TRUE,
+  show_column_names = TRUE,
+  
+  row_names_side = "left",
+  row_dend_side = "right",
+  row_names_max_width = unit(15, "cm"),
+  
+  row_names_gp = gpar(fontsize = fontsizes, col = fontcolors),
+  column_names_gp = gpar(fontsize = 14),
+  column_names_rot = 45,
+  
+  heatmap_legend_param = list(
+    title = "Normalized Enrichment Score",
+    title_gp = gpar(fontsize = 12),
+    labels_gp = gpar(fontsize = 10)
+  )
+)
+
+png("NES_heatmap_BTM_v3.png", width = 18, height = 18, units = "in", res = 300)
+draw(ht, heatmap_legend_side = "right", padding = unit(c(5, 10, 5, 5), "mm"))
 dev.off()
