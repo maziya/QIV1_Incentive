@@ -210,12 +210,13 @@ for (strain in strains) {
   #=====================================
   
   design =  ~ 0 + Visit + SEX + AGE + Library_Batch + (1 | SubjectID)
-  vobj = voomWithDreamWeights(DGEList.norm,design1,QIV1_meta_filt_cond, plot = TRUE)
+  
   DGEList = DGEList(QIV1_all.num)
   keep = edgeR::filterByExpr(DGEList, design= design)
   QIV1_filter = DGEList[keep,,keep.lib.sizes=FALSE]
   DGEList.norm = calcNormFactors(QIV1_filter, method = "TMM")
-
+  vobj = voomWithDreamWeights(DGEList.norm,design1,QIV1_meta_filt_cond, plot = TRUE)
+  
   fit_temp = dream(vobj, design1, QIV1_meta_filt_cond)
   coef_names = colnames(coef(fit_temp))
   contrast <- makeContrasts(HRvsLR = HR-LR, MRvsLR = MR-LR, HRvsMR = HR-MR, levels = coef_names)
@@ -231,7 +232,17 @@ for (strain in strains) {
   #===========================================
   #V2 vs V1 in Res & NonRes and Res separately
   #============================================
-  design2 = 0 + Visit + QIV1_meta_filt[[interaction_col]] +SEX + AGE + Library_Batch + (1 | SubjectID)
+  design2 = ~ 0 + Visit + QIV1_meta_filt[[interaction_col]] +SEX + AGE + Library_Batch + (1 | SubjectID)
+  
+  DGEList = DGEList(QIV1_all.num)
+  keep = edgeR::filterByExpr(DGEList, design= design2)
+  QIV1_filter = DGEList[keep,,keep.lib.sizes=FALSE]
+  DGEList.norm = calcNormFactors(QIV1_filter, method = "TMM")
+  vobj = voomWithDreamWeights(DGEList.norm,form,QIV1_meta_filt_cond, plot = TRUE)
+  
+  fit_temp = dream(vobj, design2, QIV1_meta_filt_cond)
+  coef_names = colnames(coef(fit_temp))
+  
   colnames(design2)[1:6] = c("LR.V1","HR.V1", "MR.V1", "LR.V2","HR.V2","MR.V2")
   
   contrast2 <- makeContrasts(
@@ -244,16 +255,7 @@ for (strain in strains) {
     HRV1vsMRV1 = HR.V1 - MR.V1,
     MRV2vsLRV2 = MR.V2 - LR.V2,
     MRV1vsLRV1 = MR.V1 - LR.V1,
-    levels = design2)
-  
-  DGE = DGEList(QIV1_all.num)
-  keep = edgeR::filterByExpr(DGE, design= design2)
-  DGE = DGE[keep,,keep.lib.sizes=FALSE]
-  DGE = calcNormFactors(DGE, method = "TMM")
-  print(identical(QIV1_meta_filt$SubjectIDNew,colnames(QIV1_all.num)))
- 
-  fit_temp = dream(vobj, design2, QIV1_meta_filt_cond)
-  coef_names = colnames(coef(fit_temp))
+    levels = coef_names)
   
   fit_final2 = dream(vobj,design2,QIV1_meta_filt_cond,L = contrast2)
   fit_final2 = eBayes(fit_final2)
