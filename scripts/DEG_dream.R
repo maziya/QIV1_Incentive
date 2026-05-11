@@ -81,22 +81,22 @@ QIV1_meta_filt$Status[QIV1_meta_filt$SubjectID %in% QIV1_non_resp$SubjectID] = "
 QIV1_meta_filt$Responder_HongKong = "LR"
 QIV1_meta_filt$Responder_HongKong[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$HongKong == "HR"]] = "HR"
 QIV1_meta_filt$Responder_HongKong[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$HongKong == "MR"]] = "MR"
-QIV1_meta_filt$Responder_HongKong = factor(QIV1_meta_filt$Responder_HongKong, levels = c("LR", "HR", "MR"))
+QIV1_meta_filt_cond$Responder_HongKong = factor(QIV1_meta_filt_cond$Responder_HongKong, levels = c("LR", "HR", "MR"))
 
 QIV1_meta_filt$Responder_Victoria = "LR"
 QIV1_meta_filt$Responder_Victoria[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Victoria == "HR"]] = "HR"
 QIV1_meta_filt$Responder_Victoria[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Victoria == "MR"]] = "MR"
-QIV1_meta_filt$Responder_Victoria = factor(QIV1_meta_filt$Responder_Victoria, levels = c("LR", "HR", "MR"))
+QIV1_meta_filt_cond$Responder_Victoria = factor(QIV1_meta_filt_cond$Responder_Victoria, levels = c("LR", "HR", "MR"))
 
 QIV1_meta_filt$Responder_Phuket = "LR"
 QIV1_meta_filt$Responder_Phuket[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Phuket == "HR"]] = "HR"
 QIV1_meta_filt$Responder_Phuket[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Phuket == "MR"]] = "MR"
-QIV1_meta_filt$Responder_Phuket = factor(QIV1_meta_filt$Responder_Phuket, levels = c("LR", "HR", "MR"))
+QIV1_meta_filt_cond$Responder_Phuket = factor(QIV1_meta_filt_cond$Responder_Phuket, levels = c("LR", "HR", "MR"))
 
 QIV1_meta_filt$Responder_Washington = "LR"
 QIV1_meta_filt$Responder_Washington[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Washington == "HR"]] = "HR"
 QIV1_meta_filt$Responder_Washington[QIV1_meta_filt$SubjectID %in% ResponderGroups$SubjectID[ResponderGroups$Washington == "MR"]] = "MR"
-QIV1_meta_filt$Responder_Washington = factor(QIV1_meta_filt$Responder_Washington, levels = c("LR", "HR", "MR"))
+QIV1_meta_filt_cond$Responder_Washington = factor(QIV1_meta_filt_cond$Responder_Washington, levels = c("LR", "HR", "MR"))
 
 #=============================
 #COUNT matrix preprocessing
@@ -136,8 +136,8 @@ QIV1_all_mtx.filtered.new = QIV1_all_mtx.filtered[,1:(ncol(QIV1_all_mtx.filtered
 
 #change V2 to V1 and then V3 to V2
 colnames_old <- colnames(QIV1_all_mtx.filtered.new)
-colnames_new <- colnames_old %>%
-  sub("V2$", "V1", x = _) %>%
+colnames_new <- colnames_old |>
+  sub("V2$", "V1", x = _)|>
   sub("V3$", "V2", x = _)
 
 colnames(QIV1_all_mtx.filtered.new) <- colnames_new
@@ -156,14 +156,12 @@ identical(QIV1_meta_filt_cond$SubjectIDNew,colnames(QIV1_all.num))
 QIV1_all.num = QIV1_all.num[,QIV1_meta_filt_cond$SubjectIDNew]                                              
 
 #split QIV1_all.num based on V1 and V2
-
 QIV1_V1.num = QIV1_all.num[, endsWith(colnames(QIV1_all.num), "V1")]
 QIV1_V2.num = QIV1_all.num[, endsWith(colnames(QIV1_all.num), "V2")]
 
 #make factors for status and visit
-QIV1_meta_filt$Status = factor(QIV1_meta_filt$Status, levels = c("HR","MR", "LR"))
-QIV1_meta_filt$Visit = factor(QIV1_meta_filt$Visit, levels = c("V1", "V2"))
-QIV1_meta_filt$Status_Visit <- paste0(QIV1_meta_filt$Status, "_", QIV1_meta_filt$Visit)
+QIV1_meta_filt_cond$Visit = factor(QIV1_meta_filt_cond$Visit, levels = c("V1", "V2"))
+QIV1_meta_filt_cond$Status_Visit <- paste0(QIV1_meta_filt_cond$Status, "_", QIV1_meta_filt_cond$Visit)
 
 #covariates
 AGE <-as.numeric(QIV1_meta_filt_cond$AGE)
@@ -172,28 +170,6 @@ SEX <-factor(QIV1_meta_filt_cond$SEX)
 
 
 
-DGEList = DGEList(QIV1_all.num)
-keep = edgeR::filterByExpr(DGEList, design= design)
-QIV1_filter = DGEList[keep,,keep.lib.sizes=FALSE]
-DGEList.norm = calcNormFactors(QIV1_filter, method = "TMM")
-
-QIV1_meta_filt_cond$Visit =relevel(QIV1_meta_filt_cond$Visit, ref = "V1")
-
-#Dream pipeline for DEGs
-# form = ~ 0 + Visit + SEX + AGE + Library_Batch + (1 | SubjectID)
-# vobj = voomWithDreamWeights(DGEList.norm,form,QIV1_meta_filt_cond, plot = TRUE)
-# 
-# fit_temp = dream(vobj, form, QIV1_meta_filt_cond)
-# coef_names = colnames(coef(fit_temp))
-# contrast = makeContrasts(
-#   Visit2vsVisit1 = VisitV2 - VisitV1,
-#   levels = coef_names)
-#  
-# fit_final = dream(vobj,form,QIV1_meta_filt_cond,L = contrast)
-# fit_final = eBayes(fit_final)
-# 
-# res_V2vsV1 = topTable(fit_final, coef = "Visit2vsVisit1",number = Inf,sort.by = "P", adjust.method = "BH")
-
 strains <- c("HongKong", "Victoria", "Phuket", "Washington")
 results_list <- list()
 
@@ -201,72 +177,129 @@ for (strain in strains) {
   response_col <- paste0("Responder_", strain)
   interaction_col <- paste0("Status_Visit_", strain)
   
-  QIV1_meta_filt[[response_col]] <- factor(QIV1_meta_filt[[response_col]], levels = c("LR", "HR", "MR"))
-  QIV1_meta_filt$Visit <- factor(QIV1_meta_filt$Visit, levels = c("V1", "V2"))
-  QIV1_meta_filt[[interaction_col]] <- interaction(QIV1_meta_filt[[response_col]], QIV1_meta_filt$Visit, drop = TRUE)
-  
+  QIV1_meta_filt_cond[[response_col]] <- factor(QIV1_meta_filt_cond[[response_col]], levels = c("LR", "HR", "MR"))
+  QIV1_meta_filt_cond$Visit <- factor(QIV1_meta_filt_cond$Visit, levels = c("V1", "V2"))
+  QIV1_meta_filt_cond[[interaction_col]] <- interaction(
+    QIV1_meta_filt_cond[[response_col]], 
+    QIV1_meta_filt_cond$Visit, 
+    drop = TRUE, sep = "_")
   #=====================================
   #Responder vs NonResponder both visits
   #=====================================
+  design <- as.formula(paste0("~ 0 + ", response_col, 
+                              " + Visit + SEX + AGE + Library_Batch + (1 | SubjectID)"))
   
-  design =  ~ 0 + Visit + SEX + AGE + Library_Batch + (1 | SubjectID)
+  dge          <- DGEList(QIV1_all.num)
+  keep         <- edgeR::filterByExpr(dge, group = QIV1_meta_filt_cond[[response_col]])
+  QIV1_filter  <- dge[keep, , keep.lib.sizes = FALSE]
+  DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
+  vobj         <- voomWithDreamWeights(DGEList.norm, design, QIV1_meta_filt_cond, plot = TRUE)
   
-  DGEList = DGEList(QIV1_all.num)
-  keep = edgeR::filterByExpr(DGEList, design= design)
-  QIV1_filter = DGEList[keep,,keep.lib.sizes=FALSE]
-  DGEList.norm = calcNormFactors(QIV1_filter, method = "TMM")
-  vobj = voomWithDreamWeights(DGEList.norm,design1,QIV1_meta_filt_cond, plot = TRUE)
+  contrast <- makeContrastsDream(
+    design,
+    QIV1_meta_filt_cond,
+    contrasts = c(
+      HRvsLR = paste0(response_col, "HR - ", response_col, "LR"),
+      MRvsLR = paste0(response_col, "MR - ", response_col, "LR"),
+      HRvsMR = paste0(response_col, "HR - ", response_col, "MR")
+    )
+  )
   
-  fit_temp = dream(vobj, design1, QIV1_meta_filt_cond)
-  coef_names = colnames(coef(fit_temp))
-  contrast <- makeContrasts(HRvsLR = HR-LR, MRvsLR = MR-LR, HRvsMR = HR-MR, levels = coef_names)
+  fit_final <- dream(vobj, design, QIV1_meta_filt_cond, L = contrast)
   
-  fit_final = dream(vobj,design,QIV1_meta_filt_cond,L = contrast)
-  fit_final = eBayes(fit_final)
   
-  results_list[[paste0(strain, "_HRvsLR")]] <- topTable(fit_final, coef = 1, number = Inf)
-  results_list[[paste0(strain, "_MRvsLR")]] <- topTable(fit_final, coef = 2, number = Inf)
-  results_list[[paste0(strain, "_HRvsMR")]] <- topTable(fit_final, coef = 3, number = Inf)
+  results_list[[paste0(strain, "_HRvsLR")]] <- topTable(fit_final, coef = "HRvsLR", number = Inf)
+  results_list[[paste0(strain, "_MRvsLR")]] <- topTable(fit_final, coef = "MRvsLR", number = Inf)
+  results_list[[paste0(strain, "_HRvsMR")]] <- topTable(fit_final, coef = "HRvsMR", number = Inf)
+  
   
   
   #===========================================
   #V2 vs V1 in Res & NonRes and Res separately
   #============================================
-  design2 = ~ 0 + Visit + QIV1_meta_filt[[interaction_col]] +SEX + AGE + Library_Batch + (1 | SubjectID)
+  design2 <- as.formula(paste0("~ 0 + ", interaction_col, 
+                              " + SEX + AGE + Library_Batch + (1 | SubjectID)"))
   
-  DGEList = DGEList(QIV1_all.num)
-  keep = edgeR::filterByExpr(DGEList, design= design2)
-  QIV1_filter = DGEList[keep,,keep.lib.sizes=FALSE]
-  DGEList.norm = calcNormFactors(QIV1_filter, method = "TMM")
-  vobj = voomWithDreamWeights(DGEList.norm,form,QIV1_meta_filt_cond, plot = TRUE)
+  dge          <- DGEList(QIV1_all.num)
+  keep         <- edgeR::filterByExpr(dge, group = QIV1_meta_filt_cond[[interaction_col]])
+  QIV1_filter  <- dge[keep, , keep.lib.sizes = FALSE]
+  DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
+  vobj         <- voomWithDreamWeights(DGEList.norm, design2, QIV1_meta_filt_cond, plot = TRUE)
   
-  fit_temp = dream(vobj, design2, QIV1_meta_filt_cond)
-  coef_names = colnames(coef(fit_temp))
+  contrast2 <- makeContrastsDream(
+    design2,
+    QIV1_meta_filt_cond,
+    contrasts = c(
+      V2vsV1_HR  = paste0(interaction_col, "HR_V2 - ", interaction_col, "HR_V1"),
+      V2vsV1_LR  = paste0(interaction_col, "LR_V2 - ", interaction_col, "LR_V1"),
+      V2vsV1_MR  = paste0(interaction_col, "MR_V2 - ", interaction_col, "MR_V1"),
+      HRV2vsLRV2 = paste0(interaction_col, "HR_V2 - ", interaction_col, "LR_V2"),
+      HRV1vsLRV1 = paste0(interaction_col, "HR_V1 - ", interaction_col, "LR_V1"),
+      HRV2vsMRV2 = paste0(interaction_col, "HR_V2 - ", interaction_col, "MR_V2"),
+      HRV1vsMRV1 = paste0(interaction_col, "HR_V1 - ", interaction_col, "MR_V1"),
+      MRV2vsLRV2 = paste0(interaction_col, "MR_V2 - ", interaction_col, "LR_V2"),
+      MRV1vsLRV1 = paste0(interaction_col, "MR_V1 - ", interaction_col, "LR_V1")
+    )
+  )
   
-  colnames(design2)[1:6] = c("LR.V1","HR.V1", "MR.V1", "LR.V2","HR.V2","MR.V2")
+  fit_final2 <- dream(vobj, design2, QIV1_meta_filt_cond, L = contrast2)
   
-  contrast2 <- makeContrasts(
-    V2vsV1_HR = HR.V2 - HR.V1,
-    V2vsV1_LR = LR.V2 - LR.V1,
-    V2vsV1_MR = MR.V2 - MR.V1,
-    HRV2vsLRV2 = HR.V2 - LR.V2,
-    HRV1vsLRV1 = HR.V1 - LR.V1,
-    HRV2vsMRV2 = HR.V2 - MR.V2,
-    HRV1vsMRV1 = HR.V1 - MR.V1,
-    MRV2vsLRV2 = MR.V2 - LR.V2,
-    MRV1vsLRV1 = MR.V1 - LR.V1,
-    levels = coef_names)
+  results_list[[paste0(strain, "_V2vsV1_HR")]]   <- topTable(fit_final2, coef = "V2vsV1_HR",  number = Inf)
+  results_list[[paste0(strain, "_V2vsV1_LR")]]   <- topTable(fit_final2, coef = "V2vsV1_LR",  number = Inf)
+  results_list[[paste0(strain, "_V2vsV1_MR")]]   <- topTable(fit_final2, coef = "V2vsV1_MR",  number = Inf)
+  results_list[[paste0(strain, "_HRV2vsLRV2")]]  <- topTable(fit_final2, coef = "HRV2vsLRV2", number = Inf)
+  results_list[[paste0(strain, "_HRV1vsLRV1")]]  <- topTable(fit_final2, coef = "HRV1vsLRV1", number = Inf)
+  results_list[[paste0(strain, "_HRV2vsMRV2")]]  <- topTable(fit_final2, coef = "HRV2vsMRV2", number = Inf)
+  results_list[[paste0(strain, "_HRV1vsMRV1")]]  <- topTable(fit_final2, coef = "HRV1vsMRV1", number = Inf)
+  results_list[[paste0(strain, "_MRV2vsLRV2")]]  <- topTable(fit_final2, coef = "MRV2vsLRV2", number = Inf)
+  results_list[[paste0(strain, "_MRV1vsLRV1")]]  <- topTable(fit_final2, coef = "MRV1vsLRV1", number = Inf)
+}
+
+#Save DEG results as csv files
+for (name in names(results_list)) {
+  deg_results <- results_list[[name]]
+  deg_results$HGNC_symbol <- rownames(deg_results)
+  deg_results = deg_results %>%
+    arrange(desc(abs(logFC))) %>%   
+    distinct(HGNC_symbol, .keep_all = TRUE)
   
-  fit_final2 = dream(vobj,design2,QIV1_meta_filt_cond,L = contrast2)
-  fit_final2 = eBayes(fit_final2)
+  deg_results$significance <- ifelse(
+    deg_results$adj.P.Val < 0.05 & abs(deg_results$logFC) > 1,
+    ifelse(deg_results$logFC > 1, "Upregulated", "Downregulated"),
+    "Not significant")
+  write.csv(deg_results, file = paste0(name, "_DEG_results.csv"), row.names = FALSE, quote = FALSE)
+}
+
+
+#======================================
+#Volcano plots for the DEGs----
+#======================================
+
+for (name in names(results_list)) {
+  deg_results <- results_list[[name]]
+  deg_results$HGNC_symbol <- rownames(deg_results)
   
-  results_list[[paste0(strain, "_V2vsV1_HR")]] <- topTable(fit_final2, coef = 1, number = Inf)
-  results_list[[paste0(strain, "_V2vsV1_LR")]] <- topTable(fit_final2, coef = 2, number = Inf)
-  results_list[[paste0(strain, "_V2vsV1_MR")]] <- topTable(fit_final2, coef = 3, number = Inf)
-  results_list[[paste0(strain, "_HRV2vsLRV2")]] <- topTable(fit_final2, coef = 4, number = Inf)
-  results_list[[paste0(strain, "_HRV1vsLRV1")]] <- topTable(fit_final2, coef = 5, number = Inf)
-  results_list[[paste0(strain, "_HRV2vsMRV2")]] <- topTable(fit_final2, coef = 6, number = Inf)
-  results_list[[paste0(strain, "_HRV1vsMRV1")]] <- topTable(fit_final2, coef = 7, number = Inf)
-  results_list[[paste0(strain, "_MRV2vsLRV2")]] <- topTable(fit_final2, coef = 8, number = Inf)
-  results_list[[paste0(strain, "_MRV1vsLRV1")]] <- topTable(fit_final2, coef = 9, number = Inf)
+  deg_results$significance <- ifelse(
+    deg_results$adj.P.Val < 0.05 & abs(deg_results$logFC) > 1,
+    ifelse(deg_results$logFC > 1, "Upregulated", "Downregulated"),
+    "Not significant")
+  
+  vplot <- ggplot(deg_results) +
+    aes(y = -log10(P.Value), x = logFC, color = significance) +
+    geom_point(size = 3) +
+    scale_color_manual(values = c(
+      "Upregulated" = "#A020F0",
+      "Downregulated" = "#A0522D",
+      "Not significant" = "grey60")) +
+    geom_hline(yintercept = -log10(0.05), linetype = "longdash", colour = "black", size = 1) +
+    geom_vline(xintercept = 1, linetype = "longdash", colour = "black", size = 1) +
+    geom_vline(xintercept = -1, linetype = "longdash", colour = "black", size = 1) +
+    labs(title = name) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 18),
+      legend.title = element_text(size = 14),
+      legend.text = element_text(size = 12))
+  
+  ggsave(paste0(name, ".png"), plot = vplot, width = 15, height = 15)
 }
