@@ -3,18 +3,19 @@
 #====================================
 library(dplyr)
 library(fgsea)
+library(data.table)
 run_GSEA_BTM <- function(deg_csv_path,
                          output_csv_path,
                          gmt_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data/BTM_for_GSEA_20131008.gmt",
                          rank_column = "logFC",
                          gene_column = "HGNC_symbol",
-                         fdr_cutoff = 0.05,
+                         fdr_cutoff = 0.01,
                          minSize = 10,
                          maxSize = 500,
                          nperm = 10000) {
   
   BTM <- fgsea::gmtPathways(gmt_path)
-  deg_df <- read.csv(deg_csv_path)
+  deg_df <- data.table::fread(deg_csv_path, data.table = FALSE, fill= TRUE)
   # Validate required columns
   if (!all(c(rank_column, gene_column) %in% colnames(deg_df))) {
     stop(paste("Missing required columns in input file:", 
@@ -51,8 +52,7 @@ run_GSEA_BTM <- function(deg_csv_path,
   #Order and filter by adjusted p-value
   gsea_res <- gsea_res[order(gsea_res$padj), ]
   gsea_fdr <- dplyr::filter(gsea_res, padj < fdr_cutoff)
-  
-  write.table(gsea_fdr, file = output_csv_path, row.names = FALSE, sep = ",", quote = FALSE)
+  data.table::fwrite(gsea_fdr, output_csv_path)
   return(gsea_fdr)
 }
 
@@ -61,7 +61,7 @@ run_GSEA_BTM <- function(deg_csv_path,
 #   output_csv_path = paste0("FGSEA",basename(deg_csv_path),".csv"))
 
 deg_files <- list.files(
-  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/QIV1_adjFC_filterbyExpr_HRMRLR_DEGs/forgsea_btm_posneg",
+  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/gsea_tests/dream_strainwise_DEGs_adjFC",
   pattern = "\\.csv$",
   full.names = TRUE
 )
@@ -80,7 +80,7 @@ library(tidyr)
 library(stringr)
 library(tibble)
 
-FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/fgsea_HRLR_degs_v2"
+FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/gsea_tests/FGSEA_dream_strainDEGs_AdjFC"
 
 csv_files = list.files(FGSEA_results, pattern = "\\.csv$", full.names = TRUE)
 read_fgsea_nes = function(file_path) {
@@ -173,7 +173,8 @@ fontcolors <- rep("black", nrow(nes_matrix))
 big_rows <- c("antiviral IFN signature (M75)", "innate antiviral response (M150)",
               "complement activation (I) (M112.0)", "enriched in NK cells (I) (M7.2)",
               "T cell activation (I) (M7.1)","T cell differentiation (M14)",
-              "enriched in B cells (IV) (M47.3)", "enriched in monocytes (II) (M11.0)")  
+              "enriched in B cells (IV) (M47.3)", "enriched in monocytes (II) (M11.0)",
+              "enriched in B cells (I) (M47.0)")  
 fontsizes[rownames(nes_matrix) %in% big_rows] <- 18
 fontcolors[rownames(nes_matrix) %in% big_rows] <- "blue"
 ht <- Heatmap(
@@ -207,6 +208,6 @@ ht <- Heatmap(
   )
 )
 
-png("NES_heatmap_BTM_v3.png", width = 18, height = 18, units = "in", res = 300)
+png("NES_heatmap_BTM_v1.png", width = 18, height = 18, units = "in", res = 300)
 draw(ht, heatmap_legend_side = "right", padding = unit(c(5, 10, 5, 5), "mm"))
 dev.off()
