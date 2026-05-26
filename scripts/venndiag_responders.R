@@ -77,8 +77,7 @@ for (vax in vax_groups) {
                 text_size       = 5,
                 show_percentage = FALSE) +
       ggtitle(paste0(vax, " — ", resp)) +
-      theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
-            legend.text = element_text(size = 12))
+      theme(plot.title = element_text(size = 15, face = "bold", hjust = 0.5))
     plot_list[[paste0(vax, "_", resp)]] <- p
   }
 }
@@ -89,7 +88,10 @@ g <- arrangeGrob(
   plot_list[["Covishield_LR"]],       plot_list[["Covishield_MR"]],       plot_list[["Covishield_HR"]],
   plot_list[["No_covid_vaccine_LR"]], plot_list[["No_covid_vaccine_MR"]], plot_list[["No_covid_vaccine_HR"]],
   ncol = 3,
-  top  = "Responder overlap across strains by COVID-19 vaccination status"
+  top  = textGrob(
+    "Responder overlap across strains by COVID-19 vaccination status",
+    gp = gpar(fontsize = 18, fontface = "bold")
+  )
 )
 ggsave("venn_responders_by_vaccination.png", plot = g,
         width = 18, height = 16, units = "in", dpi = 300, bg = "white")

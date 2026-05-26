@@ -80,38 +80,57 @@ library(tidyr)
 library(stringr)
 library(tibble)
 
-FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/gsea_tests/FGSEA_dream_strainDEGs_AdjFC"
+FGSEA_results =  "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/gsea_tests/fgsea_HRLR"
 
 csv_files = list.files(FGSEA_results, pattern = "\\.csv$", full.names = TRUE)
+
+csv_files = list.files(FGSEA_results,
+  pattern = "\\.csv$",
+  full.names = TRUE)
+
 read_fgsea_nes = function(file_path) {
-  df = read.csv(file_path, check.names = FALSE, row.names = NULL)
-  #if some fgsea results in no enriched pathways
-  if (all(trimws(df$pathway) == "")) {
+  df = fread(file_path, fill = TRUE,data.table = FALSE)
+  if (nrow(df) == 0) {
     return(NULL)
   }
+  
+  # ensure required columns exist
+  if (!all(c("pathway", "NES") %in% colnames(df))) {
+    return(NULL)
+  }
+  
+  # remove blank pathways
+  df = df %>%
+    filter(!is.na(pathway) & trimws(pathway) != "")
+  if (nrow(df) == 0) {
+    return(NULL)
+  }
+  
   df_out = df %>%
     dplyr::select(pathway, NES) %>%
-    dplyr::rename(!!basename(file_path) := NES) 
+    dplyr::rename(!!basename(file_path) := NES)
   return(df_out)
 }
 
-nes_list_raw = lapply(csv_files, read_fgsea_nes)
+nes_list_raw = lapply(csv_files,read_fgsea_nes)
+
 nes_list = nes_list_raw[!sapply(nes_list_raw, is.null)]
-nes_matrix = reduce(nes_list, full_join, by = "pathway")
 
-#format colnames to save 
-colnames(nes_matrix)[-1] = str_remove(colnames(nes_matrix)[-1], "\\.csv$")
-colnames(nes_matrix) = stringr::str_remove(colnames(nes_matrix), "^FGSEA_")
-colnames(nes_matrix) = stringr::str_remove(colnames(nes_matrix), "_DEG_results")
-write.csv(nes_matrix, file = "NES_matrix_all_fgsea.csv", quote = FALSE,row.names = FALSE)
+nes_matrix = reduce( nes_list, full_join,by = "pathway")
+# clean column names
+colnames(nes_matrix)[-1] = str_remove(  colnames(nes_matrix)[-1], "\\.csv$")
+colnames(nes_matrix) = stringr::str_remove(colnames(nes_matrix),"^FGSEA_")
+colnames(nes_matrix) =stringr::str_remove(colnames(nes_matrix), "_DEG_results")
+nes_matrix <- nes_matrix[!grepl("^TBA", nes_matrix$pathway), ]
+fwrite(nes_matrix,file = "NES_matrix_all_fgsea.csv")
 
+rownames(nes_matrix) = NULL
 #plotting heatmap for the commmon pathways with NES scores for each condition
 nes_matrix = column_to_rownames(nes_matrix, var = "pathway")
 nes_matrix = as.matrix(nes_matrix)
 nes_matrix[is.na(nes_matrix)] = 0
 
 
-nes_matrix <- nes_matrix[!grepl("^TBA", rownames(nes_matrix)), ]
 library(pheatmap)
 png("NES_heatmap_BTM_v2.png", width = 30,height = 30)
 pheatmap(nes_matrix,
@@ -171,7 +190,7 @@ fontsizes <- rep(14, nrow(nes_matrix))
 fontcolors <- rep("black", nrow(nes_matrix))
 # set specific rows to bigger font by name
 big_rows <- c("antiviral IFN signature (M75)", "innate antiviral response (M150)",
-              "complement activation (I) (M112.0)", "enriched in NK cells (I) (M7.2)",
+               "enriched in NK cells (I) (M7.2)","activated dendritic cells (M67)"
               "T cell activation (I) (M7.1)","T cell differentiation (M14)",
               "enriched in B cells (IV) (M47.3)", "enriched in monocytes (II) (M11.0)",
               "enriched in B cells (I) (M47.0)")  

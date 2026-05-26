@@ -258,7 +258,9 @@ for (strain in strains) {
 #Save DEG results as csv files
 for (name in names(results_list)) {
   deg_results <- results_list[[name]]
-  deg_results$HGNC_symbol <- rownames(deg_results)
+  
+  deg_results$target_id <- rownames(deg_results)
+  deg_results = inner_join(deg_results,protein_coding,by = "target_id")
   deg_results = deg_results %>%
     arrange(desc(abs(logFC))) %>%   
     distinct(HGNC_symbol, .keep_all = TRUE)

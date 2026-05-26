@@ -151,9 +151,67 @@ plot = ggplot(QIV1_condition, aes(x = SEX, y = maxFC, fill = SEX)) +
   ) +
   labs(
     title = "HAI response", subtitle = "Wilcox test",
-    x = "Gender",
+    x = "Covid vaccinated",
     y = "Max HAI response (Fold-Change) across 4 strains"
   ) +
   theme_classic(base_size = 10) +
   theme(legend.position = "none",
         plot.title = element_text(face = "bold", hjust = 0.5))
+
+
+#same plots for covid vaccinated status 
+
+QIV1_meta_master = inner_join(QIV1_meta_filt_cond, QIV1_responder, by = "SubjectID")
+QIV1_meta_master = QIV1_meta_master %>% filter(Visit == "V2")
+QIV1_condition = QIV1_meta_master %>% select(SubjectID, SEX, AGE,covid_vaccinated, FC.A.HongKong, FC.A.Victoria, FC.B.Phuket, FC.B.Washington)
+QIV1_condition = QIV1_condition %>% 
+  rowwise() %>%
+  mutate(maxFC = max(c_across(c(FC.A.HongKong,
+                                FC.A.Victoria,
+                                FC.B.Phuket,
+                                FC.B.Washington)), na.rm = TRUE)) %>%
+  ungroup()
+
+
+QIV1_condition <- QIV1_condition %>%
+  mutate(SEX= factor(SEX, levels = c("M", "F")))
+QIV1_condition <- QIV1_condition %>%
+  mutate(covid_vaccinated= factor(covid_vaccinated, levels = c("Covishield", "Covaxin", "No_covid_vaccine")))
+
+comparisons <- combn(levels(QIV1_condition$covid_vaccinated), 2, simplify = FALSE)
+
+plot = ggplot(QIV1_condition, aes(x = covid_vaccinated, y = maxFC, fill = covid_vaccinated)) +
+  stat_halfeye(
+    adjust = 0.5,
+    width = 0.6,
+    justification = -0.2,
+    .width = 0,
+    point_colour = NA,
+    alpha = 0.4
+  ) +
+  stat_dots(
+    side = "left",
+    adjust = 0.5,
+    width = 0.6,
+    justification = 1.2,
+    alpha = 0.6,
+    dotsize = 0.3
+  ) +
+  geom_boxplot(width = 0.15, alpha = 0.7, outlier.shape = NA) +
+  stat_compare_means(
+    comparisons = comparisons,
+    method = "wilcox.test",
+    alternative = "two.sided",
+    label = "p.format",
+    label.y = max(QIV1_condition$maxFC) * 1.1
+  ) +
+  labs(
+    title = "HAI response", subtitle = "Wilcox test",
+    x = "Covid vaccination status",
+    y = "Max HAI response (Fold-Change) across 4 strains"
+  ) +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", hjust = 0.5))
+
+ggsave("covid_Status_boxplot.png", plot = plot, width = 10, height = 10, dpi = 300)
