@@ -55,16 +55,16 @@ library(mclust)
 # clustering: named vector from spectralClustering, e.g. clustering["P1"] = 1
 # labels:  HR/MR/LR labels, same patient order/names
 
-ari_HK <- adjustedRandIndex(clust.df2$clustering, clust.df2$HongKong)
-print(ari)
+ari_HK <- adjustedRandIndex(clust.df$clustering, clust.df$HongKong)
+print(ari_HK)
 set.seed(42)
-perm_aris <- replicate(1000, adjustedRandIndex(clust.df2$clustering, sample(clust.df2$HongKong)))
-p_value <- mean(perm_aris >= ari)
+perm_aris <- replicate(1000, adjustedRandIndex(clust.df$clustering, sample(clust.df$HongKong)))
+p_value <- mean(perm_aris >= ari_HK)
 
-adjustedRandIndex(clust.df2$clustering2,clust.df2$HongKong)
-adjustedRandIndex(clust.df2$clustering2, clust.df2$Victoria)
-adjustedRandIndex(clust.df2$clustering2, clust.df2$Phuket)
-adjustedRandIndex(clust.df2$clustering2, clust.df2$Washington)
+adjustedRandIndex(clust.df$clustering,clust.df$HongKong)
+adjustedRandIndex(clust.df$clustering, clust.df$Victoria)
+adjustedRandIndex(clust.df$clustering, clust.df$Phuket)
+adjustedRandIndex(clust.df$clustering, clust.df$Washington)
 
 
 
@@ -98,7 +98,7 @@ per.omic.clusters <- lapply(per.omic.graphs, function(aff) {
 })
 names(per.omic.clusters) <- names(omics.list)
 set.seed(42) 
-fused.aff <- nemo.affinity.graph(omics.list, k = 5)
+fused.aff <- nemo.affinity.graph(omics.list, k = 10)
 fused.clusters <- spectralClustering(fused.aff, K = num.clusters)
 
 
@@ -155,7 +155,7 @@ for (name in names(omics.list)) {
 ord.fused <- order(fused.clusters)
 
 ann.fused <- data.frame(cluster = factor(fused.clusters[ord.fused]))
-rownames(ann.fused) <- rownames(fused.aff)[ord.fused]
+rownames(ann.fused) <- rownames(aff)[ord.fused]
 
 pheatmap(fused.aff[ord.fused, ord.fused],
          cluster_rows = FALSE, cluster_cols = FALSE,
@@ -166,3 +166,71 @@ pheatmap(fused.aff[ord.fused, ord.fused],
          filename = "affinity_graph_Fused.png",
          width = 6, height = 5.5, dpi = 300)
 
+
+heatmap_colors <- colorRamp2(c(-4, 0, 4), c("blue", "grey", "red"))
+library(circlize)
+library(ComplexHeatmap)
+group_colors = c("1"="blue", "2"="orange")
+group_colors = c("1"="#009E73", "2"="#CC79A7","3" = "#0072B2", "4"= "#F0E442")
+responder_colors <- c("LR" = "#E69F00", "MR" = "#56B4E9", "HR" = "#D55E00")
+annotation_col$ResponderGroup = factor(annotation_col$ResponderGroup)
+annotation_col <- clust.df
+rownames(annotation_col) <-  clust.df$SubjectID
+
+BTM_sel_scaled <- t(scale(t(BTM_sel)))
+
+ordered_metadata <- annotation_col[order(annotation_col$clustering), ]
+BTM_sel_scaled <- BTM_sel_scaled[, rownames(ordered_metadata)]
+
+responder_ha <- HeatmapAnnotation(
+  ResponderGroup = ordered_metadata[, c(
+    #"Victoria",
+    #"HongKong",
+    #"Phuket",
+    #"Washington",
+    "ResponderGroup"
+  )],
+  NEMOCluster = ordered_metadata$clustering,
+  col = list(NEMOCluster = group_colors,
+             #Victoria   = responder_colors,
+             #HongKong   = responder_colors,
+             #Phuket     = responder_colors,
+             #Washington = responder_colors,
+             ResponderGroup = responder_colors
+  ),
+  annotation_name_side = "left",
+  annotation_legend_param = list(
+    NEMOCluster = list(
+      title_gp = gpar(fontsize = 18),
+      labels_gp = gpar(fontsize = 16)
+    )
+  )
+)
+
+BTMheatmap = Heatmap(
+  BTM_sel_scaled,
+  col = heatmap_colors,              
+  top_annotation = responder_ha,
+  column_split = ordered_metadata$clustering,
+  column_gap = unit(2, "mm"),
+  cluster_column_slices = FALSE,
+  show_row_names = TRUE,
+  show_column_names = FALSE,
+  row_names_gp = gpar(fontsize = 8),
+  column_names_gp = gpar(fontsize = 8),
+  cluster_rows = TRUE,
+  cluster_columns = TRUE,
+  #clustering_distance_rows = "pearson",
+  #clustering_distance_columns = "pearson",
+  
+  clustering_method_rows = "ward.D2",
+  clustering_method_columns = "ward.D2",
+  border = FALSE,
+  heatmap_legend_param = list(title = "BTM scores Day0",
+                              title_gp = gpar(fontsize = 18),   
+                              labels_gp = gpar(fontsize = 16))
+)
+pdf("BTM_NEMO_clusters_v4.pdf", width = 16, height = 14)
+draw(BTMheatmap, column_title = "BTMs driving NEMO clusters ",
+     column_title_gp = gpar(fontsize = 18, fontface = "bold"))
+dev.off()
