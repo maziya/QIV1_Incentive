@@ -57,8 +57,8 @@ colnames(ssgsea_V2) <- gsub("_V2$", "", colnames(ssgsea_V2))
 ssgsea_scores_V1 = ssgsea_V1[!grepl("^TBD", rownames(ssgsea_V1)), ]
 ssgsea_scores_V2 = ssgsea_V2[!grepl("^TBD", rownames(ssgsea_V2)), ]
 
-write.csv(ssgsea_scores_V1, "ssgsea_scores_V1_null.csv", quote = FALSE)
-write.csv(ssgsea_scores_V2, "ssgsea_scores_V2_null.csv", quote = FALSE)
+write.csv(ssgsea_scores_V1, "ssgsea_scores_V1.csv", quote = FALSE)
+write.csv(ssgsea_scores_V2, "ssgsea_scores_V2.csv", quote = FALSE)
 
 
 #====================
