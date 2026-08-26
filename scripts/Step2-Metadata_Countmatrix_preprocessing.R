@@ -39,7 +39,7 @@ QIV1_meta_filt_cond <- QIV1_meta_filt %>%
 # =============================
 
 # Load Kallisto counts
-QIV1count <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data_24082026/QIV1_kallisto_counts.csv", 
+QIV1count <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data_24082026/QIV1_salmon_counts.csv", 
                       row.names = 1, check.names = FALSE)
 protein_coding = read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data/protein_coding_ensemble_hgnclist.csv")
 

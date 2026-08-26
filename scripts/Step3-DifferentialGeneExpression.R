@@ -7,19 +7,18 @@ library(dplyr)
 library(ggplot2)
 
 # Enable parallel processing for dream
-#register(SnowParam(workers = 8))
 register(MulticoreParam(workers = 8))
 protein_coding = read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/data/protein_coding_ensemble_hgnclist.csv")
 
 # =========================================================================
 # FILTERING & NORMALIZATION 
 # =========================================================================
-#dge_global <- DGEList(QIV1_all.num)
+dge_global <- DGEList(QIV1_all.num)
 
-# # Filter based strictly on Visit to ensure a unified gene universe for ALL models
-# keep_global <- filterByExpr(dge_global, group = QIV1_meta_filt_cond$Visit)
-# QIV1_filter <- dge_global[keep_global, , keep.lib.sizes = FALSE]
-# DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
+#  Filter based strictly on Visit to ensure a unified gene universe for ALL models
+keep_global <- filterByExpr(dge_global, group = QIV1_meta_filt_cond$Visit)
+QIV1_filter <- dge_global[keep_global, , keep.lib.sizes = FALSE]
+DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
 results_list <- list()
 
 # =========================================================================

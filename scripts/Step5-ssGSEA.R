@@ -23,10 +23,14 @@ rownames(QIV1_all.num) = expr_ensg$HGNC_symbol
 # ================================================================
 
 QIV1_filtered = QIV1_all.num[Washington_MRV1vsLRV1_DEG_results$HGNC_symbol,]
+# QIV1_adjusted <- sva::ComBat_seq(
+#   counts = as.matrix(QIV1_filtered), 
+#   batch = QIV1_meta_filt_cond$Library_Batch, 
+#   group =QIV1_meta_filt_cond$responder_group)
 QIV1_adjusted <- sva::ComBat_seq(
   counts = as.matrix(QIV1_filtered), 
   batch = QIV1_meta_filt_cond$Library_Batch, 
-  group =QIV1_meta_filt_cond$responder_group)
+  group =NULL)
 
 DGEList <- DGEList(QIV1_adjusted) 
 DGEList.norm <- calcNormFactors(DGEList, method = "TMM")
@@ -52,6 +56,9 @@ colnames(ssgsea_V2) <- gsub("_V2$", "", colnames(ssgsea_V2))
 # remove BTMs which do not have a defined name (TBD)
 ssgsea_scores_V1 = ssgsea_V1[!grepl("^TBD", rownames(ssgsea_V1)), ]
 ssgsea_scores_V2 = ssgsea_V2[!grepl("^TBD", rownames(ssgsea_V2)), ]
+
+write.csv(ssgsea_scores_V1, "ssgsea_scores_V1_null.csv", quote = FALSE)
+write.csv(ssgsea_scores_V2, "ssgsea_scores_V2_null.csv", quote = FALSE)
 
 
 #====================
