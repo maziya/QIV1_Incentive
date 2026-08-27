@@ -34,7 +34,7 @@ prepare_diablo_data <- function(
     pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
     mutate(view = "BTM") %>%
     filter(sample %in% meta_data$SubjectIDNew) %>%
-    select(-view) %>% 
+    dplyr::select(-view) %>% 
     pivot_wider(names_from = feature, values_from = value) %>%
     column_to_rownames(var = "sample") %>%
     as.matrix()
@@ -45,10 +45,10 @@ prepare_diablo_data <- function(
   valid_samples <- rownames(BTM_wide)
   
   # Filter using the dynamic timepoint string (e.g., "V1" or "V2")
-  Olink_filt <- olink_data %>% select(Protein, ends_with(timepoint))
+  Olink_filt <- olink_data %>% dplyr::select(Protein, ends_with(timepoint))
   Olink_filt <- Olink_filt[, c("Protein", intersect(colnames(Olink_filt), valid_samples))]
   
-  proteomics_filt <- proteomics_data %>% select(Protein, ends_with(timepoint))
+  proteomics_filt <- proteomics_data %>% dplyr::select(Protein, ends_with(timepoint))
   proteomics_filt <- proteomics_filt[, c("Protein", intersect(colnames(proteomics_filt), valid_samples))]
   
   # ==========================================
@@ -95,7 +95,7 @@ QIV1_meta_filt_cond_V1 <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analy
 
 set.seed(42)
 X <- prepare_diablo_data(
-  ssgsea_file = "ssgsea_scores_V1.csv",
+  ssgsea_file = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/ssgsea/ssgsea_scores_V1.csv",
   meta_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/QIV1_metadata_processed.csv",
   timepoint = "V1",
   olink_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/olink.csv",

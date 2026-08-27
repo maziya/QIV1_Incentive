@@ -128,10 +128,10 @@ QIV1_meta_filt_cond[[interaction_col]] <- interaction(
 #============================================
 design_agg <- as.formula(paste0("~ 0 + ", interaction_col, 
                              " + SEX + AGE + Library_Batch + (1 | SubjectID)"))
-dge          <- DGEList(QIV1_all.num)
-keep         <- edgeR::filterByExpr(dge, group =  QIV1_meta_filt_cond$responder_group)
-QIV1_filter  <- dge[keep, , keep.lib.sizes = FALSE]
-DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
+#dge          <- DGEList(QIV1_all.num)
+#keep         <- edgeR::filterByExpr(dge, group =  QIV1_meta_filt_cond$responder_group)
+#QIV1_filter  <- dge[keep, , keep.lib.sizes = FALSE]
+#DGEList.norm <- calcNormFactors(QIV1_filter, method = "TMM")
 vobj         <- voomWithDreamWeights(DGEList.norm, design_agg, QIV1_meta_filt_cond, plot = TRUE)
 
 contrast_agg <- makeContrastsDream(

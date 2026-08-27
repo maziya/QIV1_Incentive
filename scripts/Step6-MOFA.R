@@ -1,6 +1,8 @@
 library(MOFA2)
 library(ggplot2)
 library(ggpubr)
+library(tidyr)
+library(tibble)
 
 QIV1_meta_filt_cond_V1 <- QIV1_meta_filt_cond %>% 
   filter(Visit == "V1")
@@ -20,23 +22,29 @@ BTM_long <- as.data.frame(ssgsea_scores_fil) %>%
 
 # Proteomics
 proteomics_long <- proteomics %>%
-  select(1, ends_with("V1")) %>%
+  dplyr::select(1, ends_with("V1")) %>%
   rename(feature = 1) %>% 
   pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
   mutate(view = "proteomics") %>%
   filter(sample %in% BTM_long$sample)
 
 # Olink
+
 Olink_long <- Olink %>%
-  select(1, ends_with("V1")) %>%
-  rename(feature = 1) %>%
+  rename(feature = Protein) %>%
+  dplyr::select(feature, ends_with("V1")) %>%
   pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
+  group_by(feature) %>%
+  mutate(value = as.numeric(scale(value, center = TRUE, scale = TRUE))) %>%  # z-score per protein
+  ungroup() %>%
   mutate(view = "olink") %>%
   filter(sample %in% BTM_long$sample)
 
+
+
 # Metabolomics
 metabolomics_long <- metabolomics %>%
-  select(1, ends_with("V1")) %>%
+  dplyr::select(1, ends_with("V1")) %>%
   rename(feature = 1) %>%
   pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
   mutate(view = "metabolomics") %>%
@@ -45,7 +53,7 @@ metabolomics_long <- metabolomics %>%
 
 
 # ==========================================
-# 1. Prepare MOFA Input Data
+# 1. MOFA Input Data
 # ==========================================
 # Bind views and select specific columns in the order MOFA expects
 mofa_data <- bind_rows(BTM_long, Olink_long, metabolomics_long) %>%
@@ -83,9 +91,11 @@ data_opts$scale_views <- TRUE
 
 model_opts <- get_default_model_options(MOFAobject)
 model_opts$num_factors <- 15
+
 print(model_opts)
 
 train_opts <- get_default_training_options(MOFAobject)
+train_opts$seed <- 42
 
 MOFAobject <- prepare_mofa(
   object = MOFAobject,
@@ -97,7 +107,8 @@ MOFAobject <- prepare_mofa(
 # ==========================================
 # 5. Run MOFA Training
 # ==========================================
-outfile <- file.path(getwd(), "QIVI_V1_BTMOlinkmets_nullMOFA.hdf5")
+outfile <- file.path(getwd(), "QIVI_V1_BTM3Olinkmets_MOFA_salmon.hdf5")
+set.seed(42)
 MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = TRUE)
 
 # ==========================================
@@ -136,7 +147,7 @@ factor_varplot <- ggplot(df_long, aes(x = Factor, y = VarianceExplained, fill = 
     legend.text = element_text(size = 10)
   )
 
-ggsave("factor_varplot_btmolink_null.png", plot = factor_varplot, width = 6, height = 6, dpi = 600)
+ggsave("factor_varplot_oldbtmolink.png", plot = factor_varplot, width = 6, height = 6, dpi = 600)
 
 # ==========================================
 # 7. Standard MOFA Variance Plots
@@ -156,7 +167,7 @@ print(MOFAobject.trained@cache$variance_explained$r2_total)
 # ==========================================
 sample_metadata <- data.frame(
   sample = QIV1_meta_filt_cond_V1$SubjectIDNew,
-  responder = QIV1_meta_filt_cond_V1$Phuket,
+  responder = QIV1_meta_filt_cond_V1$HongKong,
   visit = "Day0",
   age = QIV1_meta_filt_cond_V1$AGE, 
   sex = QIV1_meta_filt_cond_V1$SEX
@@ -182,7 +193,7 @@ df2_long <- df %>%
 comparisons <- list(c("LR", "MR"), c("MR", "HR"), c("LR", "HR"))
 
 
-p <- ggplot(df_long, aes(x = responder, y = Value, fill = responder)) +
+p <- ggplot(df2_long, aes(x = responder, y = Value, fill = responder)) +
   geom_boxplot(alpha = 0.3, notch = FALSE) +
   geom_jitter(width = 0.1) +
   stat_compare_means(
@@ -196,12 +207,12 @@ p <- ggplot(df_long, aes(x = responder, y = Value, fill = responder)) +
   # facet_wrap(~Factor, scales = "free_y") +
   theme_classic() +
   labs(title = "Day0",
-    x = "Responder PH",
+    x = "Responder aggregate",
     y = "MOFA factor 1 value"
   )+
   theme_classic()
 
-ggsave("Factor1_PH_v1.png", p, width = 6, height = 5, dpi = 300)
+ggsave("Factor1_agg_oldbtm_v1.png", p, width = 6, height = 5, dpi = 300)
 
 
 #check correlation of factors
@@ -333,4 +344,4 @@ q3 <- ggplot(top_features, aes(x = reorder(feature, value), y = value, fill = va
     strip.text = element_text(size = 16)
   )
 
-ggsave("Factor1_top_drivers_by_view_v1.png", plot = q3, width = 15, height = 10, dpi = 300)
+ggsave("Factor1_top_drivers_by_view_oldbtmv1.png", plot = q3, width = 15, height = 10, dpi = 300)

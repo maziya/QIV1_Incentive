@@ -17,16 +17,16 @@ colnames(expr_ensg) = "target_id"
 expr_ensg = inner_join(expr_ensg, protein_coding, by = "target_id")
 rownames(QIV1_all.num) = expr_ensg$HGNC_symbol
 
-#=================================================================
-# filtering genes which were only tested for in DEG analysis 15750
-# correcting for library batch effect
-# ================================================================
+#===========================================================================
+# filtering genes which were only tested for in DEG analysis 15750 (kallisto)
+# 14374(salmon) correcting for library batch effect
+# ==========================================================================
 
 QIV1_filtered = QIV1_all.num[Washington_MRV1vsLRV1_DEG_results$HGNC_symbol,]
-# QIV1_adjusted <- sva::ComBat_seq(
-#   counts = as.matrix(QIV1_filtered), 
-#   batch = QIV1_meta_filt_cond$Library_Batch, 
-#   group =QIV1_meta_filt_cond$responder_group)
+QIV1_adjusted <- sva::ComBat_seq(
+  counts = as.matrix(QIV1_filtered),
+  batch = QIV1_meta_filt_cond$Library_Batch,
+  group =QIV1_meta_filt_cond$responder_group)
 QIV1_adjusted <- sva::ComBat_seq(
   counts = as.matrix(QIV1_filtered), 
   batch = QIV1_meta_filt_cond$Library_Batch, 
@@ -57,8 +57,8 @@ colnames(ssgsea_V2) <- gsub("_V2$", "", colnames(ssgsea_V2))
 ssgsea_scores_V1 = ssgsea_V1[!grepl("^TBD", rownames(ssgsea_V1)), ]
 ssgsea_scores_V2 = ssgsea_V2[!grepl("^TBD", rownames(ssgsea_V2)), ]
 
-write.csv(ssgsea_scores_V1, "ssgsea_scores_V1.csv", quote = FALSE)
-write.csv(ssgsea_scores_V2, "ssgsea_scores_V2.csv", quote = FALSE)
+write.csv(ssgsea_scores_V1, "ssgsea_scores_V1_null.csv", quote = FALSE)
+write.csv(ssgsea_scores_V2, "ssgsea_scores_V2_null.csv", quote = FALSE)
 
 
 #====================
@@ -67,13 +67,13 @@ write.csv(ssgsea_scores_V2, "ssgsea_scores_V2.csv", quote = FALSE)
 
 annotation_col <- QIV1_meta_filt_cond[match(colnames(ssgsea_scores), QIV1_meta_filt_cond$SubjectIDNew), ]
 annotation_col <- as.data.frame(annotation_col)
-annotation_col_vis <- annotation_col[, "Phuket", drop = FALSE]
+annotation_col_vis <- annotation_col[, "HongKong", drop = FALSE]
 rownames(annotation_col_vis) <- annotation_col$SubjectIDNew
 
 annotation_colors <- list(
-  Phuket = c("LR" = "#FFA500", "MR" = "#CC9767", "HR" = "#0077B6"))
+  HongKong = c("LR" = "#FFA500", "MR" = "#CC9767", "HR" = "#0077B6"))
 library(pheatmap)
-pdf("ssgsea_V1_PH.pdf", width = 14, height = 25)  
+pdf("ssgsea_V1_null_HK.pdf", width = 14, height = 25)  
 pheatmap(
   ssgsea_scores_V1,
   scale = "row",

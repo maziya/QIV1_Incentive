@@ -61,7 +61,7 @@ run_GSEA_BTM <- function(deg_csv_path,
 #   output_csv_path = paste0("FGSEA",basename(deg_csv_path),".csv"))
 
 deg_files <- list.files(
-  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/aggregate_DEG_kallisto_filterbyExpr_groupspecific",
+  path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/aggregate_DEG_salmon",
   pattern = "\\.csv$",
   full.names = TRUE
 )
@@ -80,7 +80,7 @@ library(tidyr)
 library(stringr)
 library(tibble)
 
-FGSEA_results = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/FGSEA_aggregate_kallisto_filterbyExpr_groupspecific"
+FGSEA_results = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/FGSEA_aggregate_salmon"
 
 csv_files = list.files(FGSEA_results,
   pattern = "\\.csv$",
@@ -109,6 +109,7 @@ read_fgsea_nes = function(file_path) {
     dplyr::rename(!!basename(file_path) := NES)
   return(df_out)
 }
+
 
 nes_list_raw = lapply(csv_files,read_fgsea_nes)
 
@@ -214,6 +215,6 @@ ht <- Heatmap(
   )
 )
 
-png("NES_agg_v1.png", width = 18, height = 18, units = "in", res = 300)
+png("NES_agg_salmon_v1.png", width = 18, height = 18, units = "in", res = 300)
 draw(ht, heatmap_legend_side = "right", padding = unit(c(5, 10, 5, 5), "mm"))
 dev.off()
