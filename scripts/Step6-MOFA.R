@@ -11,6 +11,7 @@ QIV1_meta_filt_cond_V1 <- QIV1_meta_filt_cond %>%
 btm_variance <- apply(ssgsea_scores_V1, 1, var)
 variance_threshold <- quantile(btm_variance, 0.2)
 ssgsea_scores_fil <- ssgsea_scores_V1[btm_variance > variance_threshold, ]
+ssgsea_scores_fil <- t(scale(t(ssgsea_scores_fil), center = TRUE, scale = TRUE))
 
 # Reshape and format
 BTM_long <- as.data.frame(ssgsea_scores_fil) %>%
@@ -25,7 +26,10 @@ proteomics_long <- proteomics %>%
   dplyr::select(1, ends_with("V1")) %>%
   rename(feature = 1) %>% 
   pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
-  mutate(view = "proteomics") %>%
+  group_by(feature) %>%
+  mutate(value = as.numeric(scale(value))) %>%
+  ungroup() %>%
+mutate(view = "proteomics") %>%
   filter(sample %in% BTM_long$sample)
 
 # Olink
@@ -43,9 +47,12 @@ Olink_long <- Olink %>%
 
 
 # Metabolomics
+metabolomics <- rownames_to_column(as.data.frame(metabolomics), var = 'Metabolite')
+
 metabolomics_long <- metabolomics %>%
   dplyr::select(1, ends_with("V1")) %>%
-  rename(feature = 1) %>%
+  rename(feature = Metabolite) %>%
+  mutate(feature = as.character(feature)) %>% 
   pivot_longer(cols = -feature, names_to = "sample", values_to = "value") %>%
   mutate(view = "metabolomics") %>%
   filter(sample %in% BTM_long$sample)
@@ -56,8 +63,12 @@ metabolomics_long <- metabolomics %>%
 # 1. MOFA Input Data
 # ==========================================
 # Bind views and select specific columns in the order MOFA expects
-mofa_data <- bind_rows(BTM_long, Olink_long, metabolomics_long) %>%
-  select(sample, feature, view, value) 
+mofa_data <- bind_rows(
+  BTM_long %>% mutate(feature = as.character(feature)),
+  Olink_long %>% mutate(feature = as.character(feature)),
+  metabolomics_long %>% mutate(feature = as.character(feature))
+) %>%
+  select(sample, feature, view, value)
 
 # ==========================================
 # 2. Create MOFA Object & Plot Overview
@@ -147,7 +158,7 @@ factor_varplot <- ggplot(df_long, aes(x = Factor, y = VarianceExplained, fill = 
     legend.text = element_text(size = 10)
   )
 
-ggsave("factor_varplot_oldbtmolink.png", plot = factor_varplot, width = 6, height = 6, dpi = 600)
+ggsave("factor_varplot_btmolink.png", plot = factor_varplot, width = 6, height = 6, dpi = 600)
 
 # ==========================================
 # 7. Standard MOFA Variance Plots
@@ -167,7 +178,7 @@ print(MOFAobject.trained@cache$variance_explained$r2_total)
 # ==========================================
 sample_metadata <- data.frame(
   sample = QIV1_meta_filt_cond_V1$SubjectIDNew,
-  responder = QIV1_meta_filt_cond_V1$HongKong,
+  responder = QIV1_meta_filt_cond_V1$Victoria,
   visit = "Day0",
   age = QIV1_meta_filt_cond_V1$AGE, 
   sex = QIV1_meta_filt_cond_V1$SEX
@@ -207,12 +218,12 @@ p <- ggplot(df2_long, aes(x = responder, y = Value, fill = responder)) +
   # facet_wrap(~Factor, scales = "free_y") +
   theme_classic() +
   labs(title = "Day0",
-    x = "Responder aggregate",
+    x = "Responder VC",
     y = "MOFA factor 1 value"
   )+
   theme_classic()
 
-ggsave("Factor1_agg_oldbtm_v1.png", p, width = 6, height = 5, dpi = 300)
+ggsave("Factor1_VC_v2.png", p, width = 6, height = 5, dpi = 300)
 
 
 #check correlation of factors
@@ -344,4 +355,4 @@ q3 <- ggplot(top_features, aes(x = reorder(feature, value), y = value, fill = va
     strip.text = element_text(size = 16)
   )
 
-ggsave("Factor1_top_drivers_by_view_oldbtmv1.png", plot = q3, width = 15, height = 10, dpi = 300)
+ggsave("Factor1_top_drivers_by_view_btmv1.png", plot = q3, width = 15, height = 10, dpi = 300)
