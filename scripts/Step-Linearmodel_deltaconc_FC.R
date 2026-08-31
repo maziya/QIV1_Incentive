@@ -10,7 +10,7 @@ foldchange = foldchange[,c(1,14,15,16,17)]
 
 strains <- c("FC.A.HongKong", "FC.A.Victoria", "FC.B.Phuket", "FC.B.Washington")
 
-run_FCcorr <- function(matrix_V1, matrix_V2, metadata, strains, feature_type = "feature") {
+run_FCcorr <- function(matrix_V1, matrix_V2, metadata, strains, feature_type = "feature", include_batch = TRUE) {
   
   colnames(matrix_V1) <- gsub("V1$", "", colnames(matrix_V1))
   colnames(matrix_V2) <- gsub("V2$", "", colnames(matrix_V2))
@@ -21,8 +21,8 @@ run_FCcorr <- function(matrix_V1, matrix_V2, metadata, strains, feature_type = "
   mat2 <- matrix_V2[, valid_subjects]
   meta <- metadata[match(valid_subjects, metadata$SubjectID), ]
   
-  # Calculate Delta and scale
-  delta_mat <- scale(mat2 - mat1)
+  # Calculate Delta 
+  delta_mat <- as.matrix(mat2 - mat1)
   
   # Run models across all strains
   all_results <- lapply(strains, function(strain) {
@@ -33,13 +33,21 @@ run_FCcorr <- function(matrix_V1, matrix_V2, metadata, strains, feature_type = "
     res_list <- lapply(1:nrow(delta_mat), function(i) {
       x <- delta_mat[i, ]
       
-      # Linear Model
-      df <- data.frame(response = response_vec, delta = x, sex = meta$SEX, batch = meta$Batch, age = meta$AGE)
-      fit <- lm(response ~ delta + sex + batch + age, data = df)
+      # Base dataframe (without batch)
+      df <- data.frame(response = response_vec, delta = x, sex = meta$SEX, age = meta$AGE)
+      
+      # Conditional Linear Model based on include_batch
+      if (include_batch) {
+        df$batch <- meta$Batch
+        fit <- lm(response ~ delta + sex + batch + age, data = df)
+      } else {
+        fit <- lm(response ~ delta + sex + age, data = df)
+      }
+      
       coef <- summary(fit)$coefficients
       
       # Correlation
-      test <- cor.test(x, response_vec, method = "spearman", exact = FALSE)
+      test <- cor.test(x, response_vec, method = "spearman", exact = FALSE, use = "complete.obs")
       
       c(beta = as.numeric(coef["delta", "Estimate"]),
         se   = as.numeric(coef["delta", "Std. Error"]),
@@ -64,9 +72,8 @@ run_FCcorr <- function(matrix_V1, matrix_V2, metadata, strains, feature_type = "
 
 
 # Run for Proteomics 
-metadata = read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/untargeted_proteomics_metadata.csv")
+metadata = read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/untargprot_metadata_FC.csv")
 
-metadata = inner_join(metadata, foldchange, by = "SubjectID")
 untargeted_matrix_log = read.csv('/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/proteomics_log.csv', row.names = 1)
 prot_V1 <- untargeted_matrix_log[, grep("V1$", colnames(untargeted_matrix_log))]
 prot_V2 <- untargeted_matrix_log[, grep("V2$", colnames(untargeted_matrix_log))]
@@ -77,13 +84,13 @@ prot_results <- run_FCcorr(
   matrix_V2 = prot_V2, 
   metadata = metadata,
   strains = strains,
-  feature_type = "protein"
+  feature_type = "protein",
+  include_batch = TRUE
 )
 
 # Run for Metabolomics
 
-metadata = read.csv('/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/metabolomics_metadata.csv')
-metadata = inner_join(metadata, foldchange,by = "SubjectID")
+metadata = read.csv('/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/mets_metadata_FC.csv')
 metab = read.csv('/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/log_batchadj_scaled_metabolomics.csv', row.names = 1)
 metabolomics_V1 <-metab[, grep("V1$", colnames(metab))]
 metabolomics_V2 <- metab[, grep("V2$", colnames(metab))]
@@ -93,12 +100,11 @@ met_results <- run_FCcorr(
   matrix_V2 = metabolomics_V2, 
   metadata = metadata,
   strains = strains,
-  feature_type = "metabolite"
+  feature_type = "metabolite",
+  include_batch = FALSE
 )
 
-# ==============================================================================
-# Generate Outputs (Volcano Plots)
-# ==============================================================================
+# Plots
 plot_volcano <- function(results_df, feature_col, mapping_df = NULL) {
   for (s in unique(results_df$strain)) {
     df <- results_df %>% 
@@ -129,16 +135,45 @@ plot_volcano <- function(results_df, feature_col, mapping_df = NULL) {
     ggsave(paste0("volcano_", feature_col, "_", s, ".png"), plot = p, height = 8, width = 8)
   }
 }
-untargeteduniprot_ENSG_HGNC <- read_csv("untargeteduniprot_ENSG_HGNC.csv")
+untargeteduniprot_ENSG_HGNC <- read_csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/untargeteduniprot_ENSG_HGNC.csv")
 colnames(untargeteduniprot_ENSG_HGNC)[1] = "protein"
 plot_volcano(prot_results, "protein", untargeteduniprot_ENSG_HGNC)
 plot_volcano(met_results, "metabolite")
 
 # ==============================================================================
-# Export Significant Results
+# Significant proteins and mets
 # ==============================================================================
+prot_results_annotated <- prot_results %>% 
+  left_join(untargeteduniprot_ENSG_HGNC, by = "protein")
 
 lapply(strains, function(s) {
-  prot_results %>% filter(strain == s) %>% 
+  prot_results_annotated %>% 
+    filter(strain == s) %>% 
     write.csv(paste0(s, "_prot_lm_FC.csv"), row.names = FALSE, quote = FALSE)
 })
+
+lapply(strains, function(s) {
+  met_results %>% filter(strain == s) %>% 
+    write.csv(paste0(s, "_mets_lm_FC.csv"), row.names = FALSE, quote = FALSE)
+})
+
+
+library(dplyr)
+library(readr)
+
+# sig proteins and mets from either the linear model or the corr coeff analysis
+get_significant_hits <- function(file_paths) {
+  significant_data <- lapply(file_paths, read_csv, show_col_types = FALSE) %>%
+    bind_rows() %>%
+    filter(pval < 0.05 & cor_pval < 0.05)
+  
+  return(significant_data)
+}
+
+
+prot_files <- list.files(pattern = "_prot_lm_FC.csv", full.names = TRUE)
+mets_files <- list.files(pattern = "_mets_lm_FC.csv", full.names = TRUE)
+
+sig_proteins <- get_significant_hits(prot_files) #took "&" condition of pval- cor_pval
+sig_metabolites <- get_significant_hits(mets_files) #took "|" condition of pval - cor_pval
+
