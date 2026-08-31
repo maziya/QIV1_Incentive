@@ -95,11 +95,11 @@ QIV1_meta_filt_cond_V1 <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analy
 
 set.seed(42)
 X <- prepare_diablo_data(
-  ssgsea_file = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/ssgsea/ssgsea_scores_V1.csv",
+  ssgsea_file = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/ssgsea_salmon/ssgsea_scores_V1.csv",
   meta_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/QIV1_metadata_processed.csv",
   timepoint = "V1",
   olink_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/olink.csv",
-  proteomics_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/proteomics.csv",
+  proteomics_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/proteomics_log.csv",
   olink_mapping_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/olink_mapping.csv",
   proteomics_mapping_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/untargeteduniprot_ENSG_HGNC.csv"
 )
@@ -118,8 +118,12 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
   keep <- Y %in% c("HR", "LR")
   
   X_bin <- lapply(X_input, function(m) m[keep, ])
-  Y_bin <- factor(as.character(Y[keep]), levels = c("LR", "HR")) # Strict levels
+  Y_bin <- factor(as.character(Y[keep]), levels = c("LR", "HR")) 
   
+  X_bin <- lapply(X_bin, function(block) {
+    variances <- apply(block, 2, var, na.rm = TRUE)
+    block[, variances > 1e-5, drop = FALSE]
+  })
   # 2. Design Matrix & Tuning Grid
   design <- matrix(0.1, ncol = length(X_bin), nrow = length(X_bin), 
                    dimnames = list(names(X_bin), names(X_bin)))
@@ -137,9 +141,11 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
     Y          = Y_bin,
     ncomp      = 3,
     design     = design,
+    scale      = TRUE,
     validation = 'loo',        
     test.keepX = test.keepX,
     measure    = "BER",
+    near.zero.var = TRUE,
     BPPARAM    = MulticoreParam(workers = parallel::detectCores() - 2)
   )
   
@@ -153,7 +159,9 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
     Y      = Y_bin,
     ncomp  = ncomp_opt,
     keepX  = keepX_opt,
-    design = design
+    design = design,
+    scale  = TRUE,
+    near.zero.var = TRUE
   )
   
   # 5. Generate and Save Plots Dynamically
