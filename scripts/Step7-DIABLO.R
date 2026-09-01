@@ -90,14 +90,14 @@ prepare_diablo_data <- function(
   return(X_list)
 }
 
-QIV1_meta_filt_cond_V1 <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/QIV1_metadata_processed.csv") %>%
-  filter(Visit == "V1")
+QIV1_meta_filt_cond_V <- read.csv("/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/QIV1_metadata_processed.csv") %>%
+  filter(Visit == "V2")
 
 set.seed(42)
 X <- prepare_diablo_data(
-  ssgsea_file = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/ssgsea_salmon/ssgsea_scores_V1.csv",
+  ssgsea_file = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/ssgsea_salmon/ssgsea_scores_V2.csv",
   meta_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/QIV1_metadata_processed.csv",
-  timepoint = "V1",
+  timepoint = "V2",
   olink_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/olink.csv",
   proteomics_data_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/proteomics_log.csv",
   olink_mapping_path = "/home/maziya/INCENTIVE/RNASeq/QIV1_DEG_Analysis/results/results_Aug2026/olink_mapping.csv",
@@ -164,7 +164,7 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
     near.zero.var = TRUE
   )
   
-  # 5. Generate and Save Plots Dynamically
+  # 5. Plots
   prefix <- paste0("diablo_", timepoint, "_", strain_name)
   color_map <- c("LR" = "steelblue", "HR" = "tomato")
   
@@ -172,8 +172,12 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
   plotIndiv(diablo.model, ind.names = FALSE, legend = TRUE, col.per.group = color_map)
   dev.off()
   
+  png(paste0(prefix, "_plotDiablo.png"), width = 10, height = 8, units = "in", res = 300)
+  plotDiablo(diablo.model$model, ncomp = 1)
+  dev.off()
+  
   png(paste0(prefix, "_plotLoadings_comp1.png"), width = 15, height = 8, units = "in", res = 300)
-  plotLoadings(diablo.model, comp = 1, contrib = 'max')
+  plotLoadings(diablo.model$model, comp = 2, contrib = 'max')
   dev.off()
   
   png(paste0(prefix, "_circosPlot.png"), width = 10, height = 10, units = "in", res = 300)
@@ -184,7 +188,6 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
   cimDiablo(diablo.model, comp = 1, margins = c(20, 35), col.names = TRUE, color.Y = color_map)
   dev.off()
   
-  # 6. Performance Evaluation
   perf.diablo <- perf(
     diablo.model, 
     validation = 'Mfold',
@@ -203,15 +206,15 @@ run_strain_diablo <- function(X_input, meta_data, strain_name, timepoint) {
 
 strains <- c("HongKong", "Victoria", "Phuket", "Washington")
 
-results_V1 <- lapply(strains, function(strain) {
+results_V2 <- lapply(strains, function(strain) {
   run_strain_diablo(
     X_input = X, 
-    meta_data = QIV1_meta_filt_cond_V1,
+    meta_data = QIV1_meta_filt_cond_V2,
     strain_name = strain,
-    timepoint = "V1"
+    timepoint = "V2"
   )
 })
-names(results_V1) <- strains
+names(results_V2) <- strains
 
 # Access specific model results later (e.g., to check HongKong error rates)
-print(results_V1$HongKong$error_rates)
+print(results_V2$Victoria$error_rates)
