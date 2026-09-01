@@ -1,4 +1,4 @@
-pca.res <- prcomp(QIV1_responder_BL, scale. = FALSE, retx = TRUE)
+pca.res <- prcomp(QIV1_adjusted, scale. = TRUE, retx = TRUE)
 pc.var <- pca.res$sdev^2
 pc.per <- round(pc.var / sum(pc.var) * 100, 1)
 
@@ -42,10 +42,10 @@ ggsave("PCA_baselinetitres.png", plot = pca.plot, width = 16, height = 10)
 #========================================================================
 #using only binary 1 and 0 for strain response and do a PCA
 #=====================================================================
-QIV1_res_pcadf = QIV1_responder[,c(1,22:25)]
-QIV1_res_pcadf = QIV1_res_pcadf %>% mutate(across(starts_with("RES4.0."), as.integer))
+QIV1_res_pcadf1 = QIV1_responder[,c(1,22:25)]
+QIV1_res_pcadf1 = QIV1_res_pcadf1 %>% mutate(across(starts_with("RES4.0."), as.integer))
 
-mat <- QIV1_res_pcadf %>%
+mat1 <- QIV1_res_pcadf1 %>%
   column_to_rownames("SubjectID") %>%
   as.matrix()
 
@@ -69,16 +69,40 @@ ggsave("PCA_binaryresponse.png", plot = pca.plot, width = 16, height = 10)
 #========use Foldchange or baseline to do PCA and color based on response pattern ========
 
 mat2 = QIV1_responder_FC %>% as.matrix()
+mat2 = log2(mat2)
 pca.res <- prcomp(mat2, scale. = TRUE)
 pc.per <- round(100 * (pca.res$sdev^2 / sum(pca.res$sdev^2)), 1)
 pca.df <- data.frame(pca.res$x,
                      SubjectID = rownames(mat)) %>%
-mutate(ResponsePattern = apply(mat, 1, paste, collapse = ""))
+mutate(ResponsePattern = apply(mat1, 1, paste, collapse = ""))
 pca.plot = ggplot(pca.df, aes(x = PC1, y = PC2, color = ResponsePattern)) +
   geom_point(size = 3) +
   xlab(paste0("PC1 (", pc.per[1], "%)")) +
   ylab(paste0("PC2 (", pc.per[2], "%)")) +
-  labs(title = "PCA using foldchange") +
+  labs(title = "PCA using foldchange", subtitle = "log2 transformed data") +
   coord_fixed() +
   theme_bw()
-ggsave("PCA_foldchange_responsepattern.png", plot = pca.plot, width = 16, height = 10)
+ggsave("PCA_foldchange_responsepattern2.png", plot = pca.plot, width = 16, height = 10)
+
+
+
+QIV1_res_pcadf = QIV1_responder[,c(1:9,14:17)]
+mat <- QIV1_res_pcadf %>%
+  column_to_rownames("SubjectID") %>%
+  as.matrix()
+mat = log2(mat)
+pca.res <- prcomp(mat, scale. = TRUE)
+pc.per <- round(100 * (pca.res$sdev^2 / sum(pca.res$sdev^2)), 1)
+pca.df <- data.frame(pca.res$x,
+                     SubjectID = rownames(mat1)) %>%
+  mutate(ResponsePattern = apply(mat1, 1, paste, collapse = ""))
+pca.plot = ggplot(pca.df, aes(x = PC1, y = PC2, color = TotResp4.0)) +
+  geom_point(size = 3) +
+  stat_ellipse(aes(group = TotResp4.0)) +
+  xlab(paste0("PC1 (", pc.per[1], "%)")) +
+  ylab(paste0("PC2 (", pc.per[2], "%)")) +
+  labs(title = "PCA using baseline, postvacc titre and foldchange", subtitle = "log2 transformed data") +
+  coord_fixed() +
+  theme_bw()
+ggsave("PCA_baselinepostvacc&foldchange_responsepattern1.png", plot = pca.plot, width = 16, height = 10)
+

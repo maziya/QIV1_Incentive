@@ -82,6 +82,7 @@ plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = ResVi
   stat_compare_means(aes(group = ResVisit),       
     method = "wilcox.test",   
     label = "p.signif",
+    paired = FALSE,
     comparisons = comp_list,
     hide.ns = TRUE) +
   theme_classic(base_size = 12) +
@@ -106,7 +107,8 @@ plot = ggplot(cibersort_plotdata, aes(x = CellType, y = Proportion, fill = Visit
   stat_compare_means(aes(group = Visit),       
                      method = "wilcox.test",  
                      comparisons = comparisons,
-                     label = "p.signif",       
+                     label = "p.signif",
+                     paired = TRUE,
                      hide.ns = TRUE) +
   theme_classic(base_size = 12) +
   theme(strip.text = element_text(face = "bold"),
